@@ -105,7 +105,9 @@ python3 -m http.server 8000
 
 ### انتشار روی GitHub Pages
 در تنظیمات مخزن → **Settings → Pages → Source: GitHub Actions**.
-با هر push روی شاخه‌ی `main`، ورک‌فلوی `.github/workflows/pages.yml` برنامه را منتشر می‌کند.
+ورک‌فلوی `.github/workflows/static.yml` با هر push روی شاخه‌ی `claude/poultry-farm-management-app-pctlpa`
+برنامه را منتشر می‌کند. اگر بعداً کد را به شاخه‌ی `main` مرج کردید، یادتان باشد `main` را هم به
+فهرست `branches` همان فایل اضافه کنید، وگرنه انتشار متوقف می‌شود.
 
 ### میزبانی‌های دیگر
 کل پروژه فایل ایستا است؛ پوشه را روی هر میزبان ایستا (Netlify، Vercel، لیارا، هر وب‌سرور) بگذارید.
