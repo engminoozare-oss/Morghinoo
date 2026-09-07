@@ -96,12 +96,17 @@
     var isManager = Store.isManager();
     var cycle = Store.activeCycle();
 
-    // قفل تب هزینه‌ها برای کارگر
+    // کارگر فقط تب «گزارش وضعیت» را دارد؛ تب هزینه و جمع‌بندی برایش نمایش داده نمی‌شود
+    var tabs = isManager ? ['money', 'report', 'summary'] : ['report'];
+    if (tabs.indexOf(UI.state.tab) < 0) UI.state.tab = 'report';
     $$('#tabbar .tab').forEach(function (t) {
       var tab = t.getAttribute('data-tab');
+      t.classList.toggle('hidden', tabs.indexOf(tab) < 0);
       t.classList.toggle('is-active', tab === UI.state.tab);
-      t.classList.toggle('is-locked', tab === 'money' && !isManager);
     });
+    // با یک تب، نوار پایین بی‌فایده است و صفحه را شلوغ می‌کند
+    $('#tabbar').classList.toggle('hidden', tabs.length < 2);
+    document.body.classList.toggle('no-tabs', tabs.length < 2);
 
     if (!cycle) {
       $('#cycle-name').textContent = 'مرغینو';
@@ -470,7 +475,7 @@
       if (t === 'mortality') Dialogs.mortality();
       else if (t === 'feed') Dialogs.feed();
       else if (t === 'weight') Dialogs.weight();
-      else if (t === 'vaccine') UI.toast('تاریخ واکسن نزدیک است');
+      else if (t === 'vaccine') Dialogs.vaccineDay(btn.getAttribute('data-id'));
     },
     'mortality': function () { Dialogs.mortality(); },
     'feed': function () { Dialogs.feed(); },

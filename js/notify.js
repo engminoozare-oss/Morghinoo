@@ -82,22 +82,34 @@
       });
     }
 
-    // ۴) واکسن — یک روز قبل و روز خود واکسن
+    // ۴) واکسن — روز قبل «فردا روز واکسن» و روز خودش «امروز روز واکسن»
     (cycle.vaccines || []).forEach(function (v) {
       if (v.done || !v.date) return;
       var d = J.diffDays(today, v.date); // چند روز مانده
-      if (d === 1 || d === 0 || d < 0) {
+      if (d === 1 || d === 0) {
         list.push({
           key: 'vaccine-' + v.id + '-' + today,
+          id: v.id,
           icon: '💉',
-          title: d === 1 ? 'فردا واکسن: ' + v.name
-               : d === 0 ? 'امروز واکسن: ' + v.name
-               : 'واکسن عقب‌افتاده: ' + v.name,
-          body: d < 0 ? J.faDigits(-d) + ' روز از تاریخ واکسن گذشته است.'
-                      : 'تاریخ واکسن: ' + J.fmt(v.date),
+          title: d === 1 ? 'فردا روز واکسن است' : 'امروز روز واکسن است',
+          body: v.name + ' — ' + J.fmt(v.date),
           tab: 'report',
           action: 'vaccine',
-          level: d < 0 ? 'due' : (d === 0 ? 'due' : 'soon')
+          btn: 'باشه',
+          level: d === 0 ? 'due' : 'soon'
+        });
+      } else if (d < 0 && role !== 'worker') {
+        // واکسن عقب‌افتاده فقط به مدیر گزارش می‌شود
+        list.push({
+          key: 'vaccine-late-' + v.id + '-' + today,
+          id: v.id,
+          icon: '💉',
+          title: 'واکسن عقب‌افتاده: ' + v.name,
+          body: J.faDigits(-d) + ' روز از تاریخ واکسن گذشته است.',
+          tab: 'report',
+          action: 'vaccine',
+          btn: 'باشه',
+          level: 'due'
         });
       }
     });
@@ -140,7 +152,8 @@
     if (!settings || settings.notifications === false) return;
     if (permission() !== 'granted') return;
     var hour = new Date().getHours();
-    pending(cycle).forEach(function (r) {
+    var role = global.Store.isManager() ? 'manager' : 'worker';
+    pending(cycle, role).forEach(function (r) {
       // یادآورهای روزانه فقط از ساعت تنظیم‌شده به بعد اعلان می‌شوند
       if (r.daily && hour < (Number(settings.reminderHour) || 17)) return;
       if (wasSent(r.key)) return;

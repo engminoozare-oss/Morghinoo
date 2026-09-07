@@ -196,6 +196,36 @@
     });
   }
 
+  /** یادآور روز واکسن — برای مدیر همان پنجره‌ی ویرایش، برای کارگر یک تأیید ساده */
+  function vaccineDayDialog(id) {
+    var cycle = Store.activeCycle();
+    var v = (cycle.vaccines || []).filter(function (r) { return r.id === id; })[0];
+    if (!v) { UI.toast('واکسن پیدا نشد'); return; }
+    if (Store.isManager()) { vaccineDialog(id); return; }
+
+    var d = J.diffDays(J.todayISO(), v.date);
+    var canDo = d <= 0;
+
+    UI.modal({
+      title: '💉 ' + (d === 1 ? 'فردا روز واکسن است' : 'روز واکسن'),
+      body:
+        '<div class="stat hero"><span class="k">' + (d === 1 ? 'واکسن فردا' : 'واکسن امروز') + '</span>' +
+          '<span class="v" style="font-size:28px">' + esc(v.name) + '</span></div>' +
+        '<div class="list" style="margin-top:12px">' +
+          '<div class="item"><span class="ico">📅</span><div class="body"><div class="s">تاریخ واکسن</div></div>' +
+          '<span class="val">' + J.fmt(v.date) + '</span></div>' +
+          (v.note ? '<div class="item"><span class="ico">📝</span><div class="body"><div class="s">' +
+            esc(v.note) + '</div></div></div>' : '') +
+        '</div>',
+      footer: '<button class="btn ghost" data-act="close-modal">باشه</button>' +
+        (canDo ? '<button class="btn ok" data-act="modal-ok">✔ واکسن زده شد</button>' : ''),
+      onOk: function () {
+        Store.upsert('vaccines', { id: id, done: true });
+        refresh('واکسن انجام‌شده ثبت شد ✅');
+      }
+    });
+  }
+
   /* ================= هزینه ================= */
 
   function expenseDialog(id, presetCat) {
@@ -412,6 +442,7 @@
     feed: feedDialog,
     weight: weightDialog,
     vaccine: vaccineDialog,
+    vaccineDay: vaccineDayDialog,
     expense: expenseDialog,
     category: categoryDialog,
     sale: saleDialog,

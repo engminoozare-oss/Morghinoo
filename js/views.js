@@ -7,19 +7,20 @@
 
   /* ================= تب ۲: گزارش وضعیت ================= */
 
-  function reminderCards(cycle) {
-    var list = Notify.pending(cycle);
+  function reminderCards(cycle, isManager) {
+    var list = Notify.pending(cycle, isManager ? 'manager' : 'worker');
     if (!list.length) {
       return '<div class="alert ok"><span class="ico">✅</span><div class="body">' +
         '<div class="t">همه‌چیز به‌روز است</div>' +
         '<div class="s">ثبت‌های امروز انجام شده است.</div></div></div>';
     }
     return list.map(function (r) {
-      return '<div class="alert ' + r.level + '" data-act="reminder" data-target="' + r.action + '">' +
+      return '<div class="alert ' + r.level + '" data-act="reminder" data-target="' + r.action + '"' +
+        (r.id ? ' data-id="' + r.id + '"' : '') + '>' +
         '<span class="ico">' + r.icon + '</span>' +
         '<div class="body"><div class="t">' + esc(r.title) + '</div>' +
         '<div class="s">' + esc(r.body) + '</div></div>' +
-        '<button class="btn sm">ثبت</button></div>';
+        '<button class="btn sm">' + esc(r.btn || 'ثبت') + '</button></div>';
     }).join('');
   }
 
@@ -114,20 +115,21 @@
       '<tbody>' + rows.join('') + '</tbody></table></div></div>';
   }
 
-  function weightTable(cycle) {
+  function weightTable(cycle, showFcr) {
     var rows = Calc.weightTrend(cycle);
     if (!rows.length) {
       return '<div class="card"><h2>⚖️ وزن‌کشی هفتگی</h2>' +
         UI.emptyBox('⚖️', 'هنوز وزن‌کشی ثبت نشده است.') + '</div>';
     }
     return '<div class="card"><h2>⚖️ وزن‌کشی هفتگی</h2><div class="table-wrap"><table>' +
-      '<thead><tr><th>تاریخ</th><th>هفته</th><th>وزن (گرم)</th><th>رشد</th><th>نرخ تبدیل</th><th></th></tr></thead><tbody>' +
+      '<thead><tr><th>تاریخ</th><th>هفته</th><th>وزن (گرم)</th><th>رشد</th>' +
+      (showFcr ? '<th>نرخ تبدیل</th>' : '') + '<th></th></tr></thead><tbody>' +
       rows.map(function (r) {
         return '<tr><td>' + J.fmtShort(r.date) + '</td>' +
           '<td>' + J.num(Math.max(1, Math.round(r.week))) + '</td>' +
           '<td><b>' + J.num(r.avgWeight) + '</b></td>' +
           '<td class="' + (r.gain >= 0 ? 'pos' : 'neg') + '">' + (r.gain >= 0 ? '+' : '−') + J.num(Math.abs(r.gain)) + '</td>' +
-          '<td>' + UI.fcrText(r.fcr) + '</td>' +
+          (showFcr ? '<td>' + UI.fcrText(r.fcr) + '</td>' : '') +
           '<td><button class="btn sm ghost" data-act="weight-edit" data-id="' + r.id + '">✎</button></td></tr>';
       }).join('') + '</tbody></table></div></div>';
   }
@@ -152,32 +154,56 @@
       '<span class="val money">' + value + '</span></div>';
   }
 
-  function renderReport(cycle, isManager) {
+  function statusCard(cycle, isManager) {
     var r = Calc.report(cycle);
     var mortalityCls = r.mortalityPct > 8 ? 'bad' : (r.mortalityPct > 4 ? 'warn' : 'ok');
 
-    return reminderCards(cycle) +
-      bigActions(cycle) +
-      '<div class="card">' +
-        '<div class="card-head"><h2>📊 وضعیت امروز</h2>' +
-        '<span class="badge">روز ' + J.num(r.day) + ' از ' + J.num(r.duration) + '</span></div>' +
-        '<div class="stat-grid">' +
+    // مدیر نرخ تبدیل را در صدر می‌بیند؛ برای کارگر تعداد جوجه‌ی زنده مهم‌تر و ساده‌تر است.
+    var body = isManager
+      ? '<div class="stat-grid">' +
           stat('hero', 'نرخ تبدیل', UI.fcrText(r.fcr)) +
           stat('ok', 'جوجه‌ی زنده', J.num(r.alive), 'قطعه') +
           stat(mortalityCls, 'کل تلفات', J.num(r.deaths), '(' + J.num(r.mortalityPct, 1) + '٪)') +
           stat('info', 'میانگین وزن', J.num(r.avgWeightG), 'گرم') +
           stat('info', 'کل دان مصرفی', J.num(r.feedKg, 1), 'کیلو') +
-        '</div>' +
+        '</div>'
+      : '<div class="stat-grid">' + stat('hero ok', 'جوجه‌ی زنده', J.num(r.alive), 'قطعه') + '</div>' +
+        '<div class="stat-grid three" style="margin-top:10px">' +
+          stat(mortalityCls, 'کل تلفات', J.num(r.deaths), 'قطعه') +
+          stat('info', 'میانگین وزن', J.num(r.avgWeightG), 'گرم') +
+          stat('info', 'کل دان', J.num(r.feedKg, 1), 'کیلو') +
+        '</div>';
+
+    return '<div class="card">' +
+        '<div class="card-head"><h2>📊 وضعیت امروز</h2>' +
+        '<span class="badge">روز ' + J.num(r.day) + ' از ' + J.num(r.duration) + '</span></div>' +
+        body +
         '<div class="progress"><i style="width:' + r.progress.toFixed(1) + '%"></i></div>' +
         '<p class="tiny muted center" style="margin:6px 0 0">' +
           (r.remainingDays > 0 ? J.num(r.remainingDays) + ' روز تا پایان دوره' : 'دوره به پایان رسیده است') +
         '</p>' +
-      '</div>' +
+      '</div>';
+  }
+
+  function renderReport(cycle, isManager) {
+    // صفحه‌ی کارگر عمداً کوتاه است: یادآور، سه دکمه‌ی ثبت، وضعیت امروز و
+    // سابقه‌ی ثبت‌های خودش. نرخ تبدیل، برنامه‌ی واکسن و مشخصات دوره کار مدیر است.
+    if (!isManager) {
+      return reminderCards(cycle, false) +
+        bigActions(cycle) +
+        statusCard(cycle, false) +
+        dailyHistory(cycle) +
+        weightTable(cycle, false);
+    }
+
+    return reminderCards(cycle, true) +
+      bigActions(cycle) +
+      statusCard(cycle, true) +
       fcrCard(cycle) +
-      vaccineCard(cycle, isManager) +
+      vaccineCard(cycle, true) +
       dailyHistory(cycle) +
-      weightTable(cycle) +
-      cycleInfoCard(cycle, isManager);
+      weightTable(cycle, true) +
+      cycleInfoCard(cycle, true);
   }
 
   /* ================= تب ۱: هزینه و درآمد ================= */

@@ -186,7 +186,8 @@ body { overscroll-behavior-y: contain; }
 .tab-icon { font-size: 24px; line-height: 1.2; }
 .tab.is-active { color: var(--brand-ink); font-weight: 700; }
 .tab.is-active .tab-icon { transform: translateY(-2px); }
-.tab.is-locked .tab-icon::after { content: '🔒'; font-size: 12px; position: relative; top: -8px; }
+/* وقتی کاربر فقط به یک تب دسترسی دارد (کارگر)، نوار تب‌ها اصلاً نشان داده نمی‌شود */
+body.no-tabs { --tabbar-h: 4px; }
 
 /* ---------- کارت‌ها ---------- */
 
@@ -222,6 +223,7 @@ body { overscroll-behavior-y: contain; }
 .stat.bad   { background: var(--bad-bg); }
 .stat.info  { background: var(--info-bg); }
 .stat.hero  { grid-column: 1 / -1; background: linear-gradient(160deg, #fff, var(--warn-bg)); }
+.stat.hero.ok { background: linear-gradient(160deg, #fff, var(--ok-bg)); }
 .stat.hero .v { font-size: 44px; }
 
 .progress { height: 10px; background: var(--line); border-radius: 99px; overflow: hidden; margin-top: 8px; }
