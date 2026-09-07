@@ -6,6 +6,7 @@
       Notify = global.Notify, UI = global.UI, Views = global.Views, Dialogs = global.Dialogs;
   var $ = UI.$, $$ = UI.$$, esc = UI.esc;
 
+  var APP_VERSION = '1.1';
   var deferredInstall = null;
 
   /* ================= ورود ================= */
@@ -414,7 +415,8 @@
           'دان هر مرغ ÷ میانگین وزن (کیلوگرم) = نرخ تبدیل<br>' +
           'تعداد زنده = تعداد کل گله − کل تلفات</p></div>' +
         '<div class="card"><h3>💾 اطلاعات کجاست؟</h3><p class="tiny">' +
-          'روی همین دستگاه. اینترنت لازم نیست. برای اطمینان، از منو فایل پشتیبان بگیرید.</p></div>',
+          'روی همین دستگاه. اینترنت لازم نیست. برای اطمینان، از منو فایل پشتیبان بگیرید.</p></div>' +
+        '<p class="tiny muted center">مرغینو نسخه‌ی ' + J.faDigits(APP_VERSION) + '</p>',
       footer: '<button class="btn ghost" data-act="close-modal">بستن</button>'
     });
   }
@@ -561,6 +563,35 @@
     });
   }
 
+  /* ================= به‌روزرسانی خودکار برنامه ================= */
+
+  /* برنامه آفلاین کار می‌کند، پس فایل‌هایش از حافظه‌ی دستگاه خوانده می‌شود.
+     این بخش مطمئن می‌شود نسخه‌ی تازه‌ی منتشرشده به دست کاربر برسد:
+     سرویس‌ورکر جدید بلافاصله جای قبلی را می‌گیرد و صفحه یک‌بار خودش
+     تازه می‌شود. */
+  function setupServiceWorker() {
+    if (!('serviceWorker' in navigator)) return;
+    var reloading = false;
+
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (reloading) return;         // فقط یک‌بار، تا حلقه‌ی تازه‌سازی درست نشود
+      reloading = true;
+      UI.toast('نسخه‌ی جدید برنامه گرفته شد…');
+      setTimeout(function () { location.reload(); }, 400);
+    });
+
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').then(function (reg) {
+        // هر بار که برنامه باز یا از پس‌زمینه برگردانده می‌شود، نسخه‌ی تازه بررسی شود
+        document.addEventListener('visibilitychange', function () {
+          if (!document.hidden) reg.update().catch(function () {});
+        });
+      }).catch(function (e) {
+        console.warn('ثبت سرویس‌ورکر ناموفق بود', e);
+      });
+    });
+  }
+
   /* ================= شروع ================= */
 
   function init() {
@@ -571,13 +602,7 @@
     if (Store.session()) showApp();
     else showLogin();
 
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function () {
-        navigator.serviceWorker.register('sw.js').catch(function (e) {
-          console.warn('ثبت سرویس‌ورکر ناموفق بود', e);
-        });
-      });
-    }
+    setupServiceWorker();
   }
 
   global.App = { render: render, init: init, showLogin: showLogin };
