@@ -96,6 +96,11 @@
       '</p></div>';
   }
 
+  /* جدول‌ها باید کامل در عرض گوشی جا شوند، پس تاریخ و روزِ هفته در یک
+     خانه‌ی دوخطی ادغام شده‌اند و به‌جای ستون دکمه، کل سطر لمسی است. */
+
+  function none() { return '<span class="none">—</span>'; }
+
   function dailyHistory(cycle) {
     var today = J.todayISO();
     var rows = [], i;
@@ -104,15 +109,18 @@
       if (cycle.start.entryDate && d < cycle.start.entryDate) break;
       var m = (cycle.mortality || []).filter(function (r) { return r.date === d; })[0];
       var f = (cycle.feed || []).filter(function (r) { return r.date === d; })[0];
-      rows.push('<tr><td>' + J.fmtShort(d) + '</td>' +
-        '<td>' + J.weekday(d) + '</td>' +
-        '<td>' + (m ? J.num(m.count) : '<span class="muted">—</span>') + '</td>' +
-        '<td>' + (f ? J.num(f.kg, 1) : '<span class="muted">—</span>') + '</td>' +
-        '<td><button class="btn sm ghost" data-act="day-edit" data-date="' + d + '">✎</button></td></tr>');
+      var head = i === 0 ? 'امروز' : (i === 1 ? 'دیروز' : J.weekday(d));
+      rows.push('<tr class="tap" data-act="day-edit" data-date="' + d + '">' +
+        '<td class="when"><b>' + head + '</b><span>' + J.fmtDay(d) + '</span></td>' +
+        '<td class="n">' + (m ? J.num(m.count) : none()) + '</td>' +
+        '<td class="n">' + (f ? J.num(f.kg, 1) : none()) + '</td>' +
+        '<td class="edit">✎</td></tr>');
     }
-    return '<div class="card"><h2>📆 ده روز اخیر</h2><div class="table-wrap"><table>' +
-      '<thead><tr><th>تاریخ</th><th>روز</th><th>تلفات</th><th>دان (کیلو)</th><th></th></tr></thead>' +
-      '<tbody>' + rows.join('') + '</tbody></table></div></div>';
+    return '<div class="card"><h2>📆 ده روز اخیر</h2><div class="table-wrap">' +
+      '<table class="rtable"><thead><tr>' +
+      '<th>روز</th><th>🪶 تلفات</th><th>🌾 دان (کیلو)</th><th></th>' +
+      '</tr></thead><tbody>' + rows.join('') + '</tbody></table></div>' +
+      '<p class="tiny muted" style="margin:8px 2px 0">برای اصلاح هر روز، روی سطرش بزنید.</p></div>';
   }
 
   function weightTable(cycle, showFcr) {
@@ -121,16 +129,20 @@
       return '<div class="card"><h2>⚖️ وزن‌کشی هفتگی</h2>' +
         UI.emptyBox('⚖️', 'هنوز وزن‌کشی ثبت نشده است.') + '</div>';
     }
-    return '<div class="card"><h2>⚖️ وزن‌کشی هفتگی</h2><div class="table-wrap"><table>' +
-      '<thead><tr><th>تاریخ</th><th>هفته</th><th>وزن (گرم)</th><th>رشد</th>' +
-      (showFcr ? '<th>نرخ تبدیل</th>' : '') + '<th></th></tr></thead><tbody>' +
+    return '<div class="card"><h2>⚖️ وزن‌کشی هفتگی</h2><div class="table-wrap">' +
+      '<table class="rtable"><thead><tr>' +
+        '<th>هفته</th><th>وزن (گرم)</th><th>رشد</th>' +
+        (showFcr ? '<th>نرخ تبدیل</th>' : '') + '<th></th>' +
+      '</tr></thead><tbody>' +
       rows.map(function (r) {
-        return '<tr><td>' + J.fmtShort(r.date) + '</td>' +
-          '<td>' + J.num(Math.max(1, Math.round(r.week))) + '</td>' +
-          '<td><b>' + J.num(r.avgWeight) + '</b></td>' +
-          '<td class="' + (r.gain >= 0 ? 'pos' : 'neg') + '">' + (r.gain >= 0 ? '+' : '−') + J.num(Math.abs(r.gain)) + '</td>' +
-          (showFcr ? '<td>' + UI.fcrText(r.fcr) + '</td>' : '') +
-          '<td><button class="btn sm ghost" data-act="weight-edit" data-id="' + r.id + '">✎</button></td></tr>';
+        return '<tr class="tap" data-act="weight-edit" data-id="' + r.id + '">' +
+          '<td class="when"><b>هفته ' + J.num(Math.max(1, Math.round(r.week))) + '</b>' +
+            '<span>' + J.fmtDay(r.date) + '</span></td>' +
+          '<td class="n big">' + J.num(r.avgWeight) + '</td>' +
+          '<td class="n ' + (r.gain >= 0 ? 'pos' : 'neg') + '">' +
+            (r.gain >= 0 ? '+' : '−') + J.num(Math.abs(r.gain)) + '</td>' +
+          (showFcr ? '<td class="n">' + UI.fcrText(r.fcr) + '</td>' : '') +
+          '<td class="edit">✎</td></tr>';
       }).join('') + '</tbody></table></div></div>';
   }
 

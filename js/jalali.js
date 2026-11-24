@@ -173,6 +173,13 @@
     return faDigits(j.jd) + ' ' + MONTHS[j.jm - 1] + ' ' + faDigits(j.jy);
   }
 
+  /** «۱۴ مهر» — بدون سال، برای جدول‌های باریک */
+  function fmtDay(iso) {
+    if (!iso) return '—';
+    var j = isoToJ(iso);
+    return faDigits(j.jd) + ' ' + MONTHS[j.jm - 1];
+  }
+
   /** «۱۴۰۴/۰۷/۱۴» */
   function fmtShort(iso) {
     if (!iso) return '—';
@@ -216,6 +223,7 @@
     num: num,
     qty: qty,
     fmt: fmt,
+    fmtDay: fmtDay,
     fmtShort: fmtShort,
     fmtWithDay: fmtWithDay,
     weekday: weekday,
