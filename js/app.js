@@ -6,7 +6,7 @@
       Notify = global.Notify, UI = global.UI, Views = global.Views, Dialogs = global.Dialogs;
   var $ = UI.$, $$ = UI.$$, esc = UI.esc;
 
-  var APP_VERSION = '1.1';
+  var APP_VERSION = '1.2';
   var deferredInstall = null;
 
   /* ================= ورود ================= */
@@ -166,12 +166,12 @@
         '</div>' +
         '<div class="grid-2">' +
           '<div class="field"><label>🐥 تعداد گله (قطعه)</label>' +
-            '<input type="number" inputmode="numeric" id="f-count" min="0" step="1" value="' + (s.flockCount || '') + '" placeholder="مثلاً ۱۰۰۰۰"></div>' +
+            UI.numInput('f-count', s.flockCount || '', { mode: 'int', placeholder: 'مثلاً 10000' }) + '</div>' +
           '<div class="field"><label>⚖️ وزن اولیه (گرم)</label>' +
-            '<input type="number" inputmode="decimal" id="f-weight" min="0" step="any" value="' + (s.initialWeight || '') + '" placeholder="مثلاً ۴۲"></div>' +
+            UI.numInput('f-weight', s.initialWeight || '', { placeholder: 'مثلاً 42' }) + '</div>' +
         '</div>' +
         '<div class="field"><label>⏳ طول دوره (روز)</label>' +
-          '<input type="number" inputmode="numeric" id="f-days" min="1" step="1" value="' + (s.durationDays || 90) + '">' +
+          UI.numInput('f-days', s.durationDays || 90, { mode: 'int' }) +
           '<div class="hint">دوره‌ی پرورش معمولاً حدود ۹۰ روز (سه ماه) است.</div></div>',
       onOk: function (root) {
         var data = {
@@ -322,13 +322,14 @@
           '<input type="text" id="f-farm" value="' + esc(st.farmName || '') + '"></div>' +
         '<div class="grid-2">' +
           '<div class="field"><label>🔑 رمز مدیر (۴ رقم)</label>' +
-            '<input type="number" inputmode="numeric" id="f-mpin" value="' + esc(st.managerPin) + '"></div>' +
+            UI.numInput('f-mpin', st.managerPin, { mode: 'pin' }) + '</div>' +
           '<div class="field"><label>🔑 رمز کارگر (۴ رقم)</label>' +
-            '<input type="number" inputmode="numeric" id="f-wpin" value="' + esc(st.workerPin) + '"></div>' +
+            UI.numInput('f-wpin', st.workerPin, { mode: 'pin' }) + '</div>' +
         '</div>' +
         '<p class="tiny muted">رمزها فقط روی همین دستگاه ذخیره می‌شوند و جلوی دسترسی ساده را می‌گیرند؛ جای قفل واقعی گوشی را نمی‌گیرند.</p>',
       onOk: function (root) {
-        var m = $('#f-mpin', root).value.trim(), w = $('#f-wpin', root).value.trim();
+        var m = J.latinDigits($('#f-mpin', root).value).trim();
+        var w = J.latinDigits($('#f-wpin', root).value).trim();
         if (!/^\d{4}$/.test(m) || !/^\d{4}$/.test(w)) { UI.toast('رمزها باید ۴ رقم باشند'); return; }
         if (m === w) { UI.toast('رمز مدیر و کارگر نباید یکی باشد'); return; }
         var s = Store.get().settings;
@@ -572,8 +573,12 @@
   function setupServiceWorker() {
     if (!('serviceWorker' in navigator)) return;
     var reloading = false;
+    // بار اولی که برنامه باز می‌شود سرویس‌ورکر تازه نصب می‌شود و کنترل را
+    // می‌گیرد؛ آن یک‌بار تازه‌سازی لازم نیست و فقط کار کاربر را به هم می‌ریزد.
+    var hadController = !!navigator.serviceWorker.controller;
 
     navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (!hadController) { hadController = true; return; }
       if (reloading) return;         // فقط یک‌بار، تا حلقه‌ی تازه‌سازی درست نشود
       reloading = true;
       UI.toast('نسخه‌ی جدید برنامه گرفته شد…');

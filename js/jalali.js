@@ -129,6 +129,27 @@
     return String(s).replace(/\d/g, function (d) { return FA[+d]; });
   }
 
+  /** ارقام فارسی و عربی را به رقم لاتین برمی‌گرداند تا بشود با آن‌ها حساب کرد */
+  function latinDigits(s) {
+    return String(s == null ? '' : s)
+      .replace(/[۰-۹]/g, function (d) { return d.charCodeAt(0) - 1776; })
+      .replace(/[٠-٩]/g, function (d) { return d.charCodeAt(0) - 1632; });
+  }
+
+  /**
+   * هر متنی را که کاربر در کادر نوشته به عدد تبدیل می‌کند:
+   * ارقام فارسی و عربی، جداکننده‌ی هزارگان (٬ ، ,) و علامت اعشار (٫ / .)
+   * همگی پذیرفته می‌شوند. اگر عددی در متن نباشد صفر برمی‌گرداند.
+   */
+  function parseNum(v) {
+    var s = latinDigits(v)
+      .replace(/[\u066C\u060C,\s\u200c]/g, '')   // جداکننده‌ی هزارگان حذف می‌شود
+      .replace(/[\u066B\/]/g, '.')                 // ٫ و / هر دو یعنی اعشار
+      .replace(/[^0-9.\-]/g, '');
+    var n = parseFloat(s);
+    return isNaN(n) ? 0 : n;
+  }
+
   /** عدد را با جداکننده‌ی هزارگان و ارقام فارسی برمی‌گرداند */
   function num(n, decimals) {
     if (n === null || n === undefined || isNaN(n)) return '—';
@@ -137,6 +158,12 @@
     var parts = s.split('.');
     parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '٬');
     return faDigits(parts.join('/'));
+  }
+
+  /** مقدار: اگر عدد رُند باشد اعشار نمی‌گیرد (۱۰٬۰۰۰ نه ۱۰٬۰۰۰/۰۰) */
+  function qty(n) {
+    var v = Number(n) || 0;
+    return num(v, v % 1 === 0 ? 0 : 2);
   }
 
   /** «۱۴ مهر ۱۴۰۴» */
@@ -184,7 +211,10 @@
     addDays: addDays,
     diffDays: diffDays,
     faDigits: faDigits,
+    latinDigits: latinDigits,
+    parseNum: parseNum,
     num: num,
+    qty: qty,
     fmt: fmt,
     fmtShort: fmtShort,
     fmtWithDay: fmtWithDay,

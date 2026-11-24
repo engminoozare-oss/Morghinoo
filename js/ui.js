@@ -75,6 +75,104 @@
     });
   }
 
+  /* ================= کادرهای عددی ================= */
+  /* کاربر می‌تواند با کیبورد فارسی یا انگلیسی عدد بزند؛ هر چه بنویسد با
+     ارقام فارسی و جداکننده‌ی سه‌رقمی نشان داده می‌شود (۱۸۰٬۰۰۰٬۰۰۰).
+     مکان‌نما هم سر جای خودش می‌ماند تا وسط عدد هم بشود ویرایش کرد. */
+
+  /* برای جابه‌جایی مکان‌نما، رقم‌ها و علامت اعشار «معنادار» حساب می‌شوند و
+     جداکننده‌ی هزارگان نه؛ چون خودِ برنامه آن را می‌گذارد و برمی‌دارد. */
+  var SIG_TYPED = /[0-9۰-۹٠-٩.\u066B\/]/;   // آنچه کاربر نوشته
+  var SIG_SHOWN = /[0-9۰-۹\/]/;              // آنچه نشان داده می‌شود
+
+  /** متن خام کاربر را به شکل نمایشی درمی‌آورد. mode: dec | int | pin */
+  function formatNum(raw, mode) {
+    var s = J.latinDigits(raw)
+      .replace(/[\u066C\u060C,\s\u200c]/g, '')  // جداکننده‌های هزارگان
+      .replace(/[\u066B\/]/g, '.')                // علامت اعشار
+      .replace(/[^0-9.]/g, '');
+
+    if (mode === 'pin') return J.faDigits(s.replace(/\./g, '').slice(0, 4));
+    if (mode !== 'dec') s = s.split('.')[0];   // ۱۰۰۰۰٫۵ در کادر تعدادی یعنی ۱۰۰۰۰
+
+    var dot = s.indexOf('.');
+    var intPart = dot < 0 ? s : s.slice(0, dot);
+    var frac = dot < 0 ? '' : s.slice(dot + 1).replace(/\./g, '');
+
+    intPart = intPart.replace(/^0+(?=\d)/, '');     // صفرهای اضافه‌ی ابتدای عدد
+    if (!intPart && dot >= 0) intPart = '0';
+
+    var out = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '٬');
+    if (dot >= 0) out += '/' + frac;
+    return J.faDigits(out);
+  }
+
+  /** چند کاراکتر معنادار پس از مکان‌نما مانده است */
+  function sigAfter(str, pos) {
+    var n = 0;
+    for (var i = pos; i < str.length; i++) {
+      if (SIG_TYPED.test(str.charAt(i))) n++;
+    }
+    return n;
+  }
+
+  /** جای مکان‌نما طوری که همین تعداد کاراکتر معنادار جلویش بماند */
+  function caretWithSigAfter(str, count) {
+    if (count <= 0) return str.length;
+    var n = 0;
+    for (var i = str.length - 1; i >= 0; i--) {
+      if (SIG_SHOWN.test(str.charAt(i))) {
+        n++;
+        if (n === count) return i;
+      }
+    }
+    return 0;
+  }
+
+  function reformat(el) {
+    var mode = el.getAttribute('data-num') || 'dec';
+    var before = el.value;
+    var pos = el.selectionStart;
+    var after = formatNum(before, mode);
+    if (after === before) return;
+    var keep = sigAfter(before, pos == null ? before.length : pos);
+    el.value = after;
+    if (pos != null) {
+      var np = caretWithSigAfter(after, keep);
+      try { el.setSelectionRange(np, np); } catch (e) {}
+    }
+  }
+
+  document.addEventListener('input', function (ev) {
+    var el = ev.target;
+    if (el && el.getAttribute && el.getAttribute('data-num')) reformat(el);
+  });
+
+  /** ساخت کادر عددی. opts: {mode, placeholder, extra} */
+  function numInput(id, value, opts) {
+    opts = opts || {};
+    var mode = opts.mode || 'dec';
+    var shown = (value === '' || value === null || value === undefined)
+      ? '' : formatNum(String(value), mode);
+    return '<input type="text" id="' + id + '" data-num="' + mode + '"' +
+      ' inputmode="' + (mode === 'dec' ? 'decimal' : 'numeric') + '"' +
+      ' value="' + esc(shown) + '"' +
+      (opts.placeholder ? ' placeholder="' + esc(J.faDigits(opts.placeholder)) + '"' : '') +
+      (mode === 'pin' ? ' maxlength="4"' : '') +
+      ' autocomplete="off" enterkeyhint="done"' + (opts.extra || '') + '>';
+  }
+
+  /** مقدار عددی را در کادر می‌نشاند (برای دکمه‌های + و −) */
+  function setNum(el, value) {
+    el.value = formatNum(String(value), el.getAttribute('data-num') || 'dec');
+  }
+
+  /** عدد داخل کادر را برمی‌گرداند */
+  function getNum(root, sel) {
+    var el = typeof sel === 'string' ? $(sel, root) : sel;
+    return el ? J.parseNum(el.value) : 0;
+  }
+
   /* ================= انتخاب تاریخ شمسی ================= */
 
   function jdateHTML(name, iso, opts) {
@@ -174,6 +272,7 @@
     $: $, $$: $$, esc: esc, toast: toast,
     modal: modal, closeModal: closeModal, confirmBox: confirmBox,
     jdateHTML: jdateHTML, readJDate: readJDate, setJDate: setJDate, syncJDateDays: syncJDateDays,
+    numInput: numInput, setNum: setNum, getNum: getNum, formatNum: formatNum,
     stat: stat, emptyBox: emptyBox, money: money, fcrText: fcrText,
     state: state
   };

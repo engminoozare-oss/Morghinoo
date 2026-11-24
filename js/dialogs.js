@@ -27,7 +27,7 @@
         '<div class="field"><label>تعداد تلفات (قطعه)</label>' +
           '<div class="stepper">' +
             '<button type="button" data-act="dec">−</button>' +
-            '<input type="number" inputmode="numeric" id="f-count" min="0" step="1" value="' + (rec.count != null ? rec.count : 0) + '">' +
+            UI.numInput('f-count', rec.count != null ? rec.count : 0, { mode: 'int' }) +
             '<button type="button" data-act="inc">+</button>' +
           '</div>' +
           '<div class="chips" style="margin-top:8px">' +
@@ -39,10 +39,10 @@
           '<input type="text" id="f-note" placeholder="مثلاً: تلفات زیر آبخوری" value="' + esc(rec.note || '') + '"></div>',
       onAct: function (act, btn, root) {
         var input = $('#f-count', root);
-        if (act === 'inc') input.value = Store.num(input.value) + 1;
-        if (act === 'dec') input.value = Math.max(0, Store.num(input.value) - 1);
+        if (act === 'inc') UI.setNum(input, Store.num(input.value) + 1);
+        if (act === 'dec') UI.setNum(input, Math.max(0, Store.num(input.value) - 1));
         if (act === 'quick') {
-          input.value = btn.getAttribute('data-v');
+          UI.setNum(input, btn.getAttribute('data-v'));
           $$('.chip[data-act=quick]', root).forEach(function (c) { c.classList.remove('sel'); });
           btn.classList.add('sel');
         }
@@ -73,7 +73,7 @@
         '<div class="field"><label>وزن دان مصرفی امروز (کیلوگرم)</label>' +
           '<div class="stepper">' +
             '<button type="button" data-act="dec">−</button>' +
-            '<input type="number" inputmode="decimal" id="f-kg" min="0" step="0.5" value="' + (rec.kg != null ? rec.kg : '') + '" placeholder="۰">' +
+            UI.numInput('f-kg', rec.kg != null ? rec.kg : '', { placeholder: '0' }) +
             '<button type="button" data-act="inc">+</button>' +
           '</div>' +
           (avg > 0 ? '<div class="hint">میانگین هفته‌ی گذشته: ' + J.num(avg, 1) + ' کیلو در روز</div>' : '') +
@@ -85,8 +85,8 @@
         '<div class="field"><label>تاریخ</label>' + UI.jdateHTML('date', date) + '</div>',
       onAct: function (act, btn, root) {
         var input = $('#f-kg', root);
-        if (act === 'inc') input.value = Store.num(input.value) + 10;
-        if (act === 'dec') input.value = Math.max(0, Store.num(input.value) - 10);
+        if (act === 'inc') UI.setNum(input, Store.num(input.value) + 10);
+        if (act === 'dec') UI.setNum(input, Math.max(0, Store.num(input.value) - 10));
         if (act === 'type') {
           $$('.chip[data-act=type]', root).forEach(function (c) { c.classList.remove('sel'); });
           btn.classList.add('sel');
@@ -116,9 +116,9 @@
       title: '⚖️ ثبت وزن‌کشی',
       body:
         '<div class="field"><label>میانگین وزن هر مرغ (گرم)</label>' +
-          '<input type="number" inputmode="decimal" id="f-w" min="0" step="10" value="' + (rec ? rec.avgWeight : '') + '" placeholder="مثلاً ۱۲۵۰"></div>' +
+          UI.numInput('f-w', rec ? rec.avgWeight : '', { placeholder: 'مثلاً 1250' }) + '</div>' +
         '<div class="field"><label>چند مرغ وزن شد؟ (اختیاری)</label>' +
-          '<input type="number" inputmode="numeric" id="f-sample" min="0" step="1" value="' + (rec && rec.sample ? rec.sample : '') + '" placeholder="مثلاً ۱۰"></div>' +
+          UI.numInput('f-sample', rec && rec.sample ? rec.sample : '', { mode: 'int', placeholder: 'مثلاً 10' }) + '</div>' +
         '<div class="field"><label>تاریخ وزن‌کشی</label>' + UI.jdateHTML('date', date) + '</div>' +
         '<div class="field"><label>توضیح (اختیاری)</label>' +
           '<input type="text" id="f-note" value="' + esc(rec && rec.note ? rec.note : '') + '" placeholder="یکنواختی گله، وضعیت ظاهری…"></div>',
@@ -244,12 +244,12 @@
         '<div class="field"><label>نوع هزینه</label><div class="cat-grid">' + grid + '</div></div>' +
         '<div class="grid-2">' +
           '<div class="field"><label>مقدار <span class="muted" id="f-unit">(' + esc(Store.category(cat).unit) + ')</span></label>' +
-            '<input type="number" inputmode="decimal" id="f-qty" min="0" step="any" value="' + (rec ? rec.qty : '') + '" placeholder="۰"></div>' +
+            UI.numInput('f-qty', rec ? rec.qty : '', { placeholder: '0' }) + '</div>' +
           '<div class="field"><label>فی (تومان)</label>' +
-            '<input type="number" inputmode="decimal" id="f-price" min="0" step="any" value="' + (rec ? rec.unitPrice : '') + '" placeholder="۰"></div>' +
+            UI.numInput('f-price', rec ? rec.unitPrice : '', { placeholder: '0' }) + '</div>' +
         '</div>' +
         '<div class="field"><label>مبلغ کل (تومان)</label>' +
-          '<input type="number" inputmode="decimal" id="f-total" min="0" step="any" value="' + (rec ? rec.total : '') + '" placeholder="۰">' +
+          UI.numInput('f-total', rec ? rec.total : '', { placeholder: '0' }) +
           '<div class="hint" id="f-total-hint">مقدار × فی به‌صورت خودکار حساب می‌شود؛ می‌توانید دستی هم بنویسید.</div></div>' +
         '<div class="field"><label>تاریخ خرید</label>' + UI.jdateHTML('date', rec ? rec.date : J.todayISO()) + '</div>' +
         '<div class="field"><label>توضیح (اختیاری)</label>' +
@@ -264,14 +264,14 @@
         function fromQtyPrice() {
           var q = Store.num(qty.value), p = Store.num(price.value);
           if (q > 0 && p > 0) {
-            total.value = Math.round(q * p);
-            hint.textContent = J.num(q, 2) + ' × ' + J.num(p) + ' = ' + J.num(q * p) + ' تومان';
+            UI.setNum(total, Math.round(q * p));
+            hint.textContent = J.qty(q) + ' × ' + J.num(p) + ' = ' + J.num(q * p) + ' تومان';
           }
         }
         function fromTotal() {
           var q = Store.num(qty.value), t = Store.num(total.value);
           if (q > 0 && t > 0) {
-            price.value = Math.round((t / q) * 100) / 100;
+            UI.setNum(price, Math.round((t / q) * 100) / 100);
             hint.textContent = 'فی هر واحد: ' + J.num(t / q) + ' تومان';
           }
         }
@@ -325,7 +325,7 @@
     var body = rows.length ? '<div class="list">' + rows.map(function (e) {
       return '<div class="item tap" data-act="edit" data-id="' + e.id + '">' +
         '<span class="ico">' + c.icon + '</span>' +
-        '<div class="body"><div class="t">' + J.num(e.qty, 2) + ' ' + esc(c.unit) +
+        '<div class="body"><div class="t">' + J.qty(e.qty) + ' ' + esc(c.unit) +
         ' × ' + J.num(e.unitPrice) + '</div>' +
         '<div class="s">' + J.fmt(e.date) + (e.note ? ' • ' + esc(e.note) : '') + '</div></div>' +
         '<span class="val money">' + J.num(e.total) + '</span></div>';
@@ -334,7 +334,7 @@
     UI.modal({
       title: c.icon + ' ' + c.label,
       body: '<div class="stat-grid" style="margin-bottom:12px">' +
-          UI.stat('info', 'مجموع مقدار', J.num(qty, 2), c.unit) +
+          UI.stat('info', 'مجموع مقدار', J.qty(qty), c.unit) +
           UI.stat('bad', 'مجموع هزینه', J.num(total), 'تومان') +
         '</div>' + body,
       footer: '<button class="btn ghost" data-act="close-modal">بستن</button>' +
@@ -357,12 +357,13 @@
       title: '🐔 فروش مرغ',
       body:
         '<div class="field"><label>فی روز مرغ — قیمت هر کیلو (تومان)</label>' +
-          '<input type="number" inputmode="decimal" id="f-price" min="0" step="any" value="' + (s.pricePerKg || '') + '" placeholder="مثلاً ۷۵۰۰۰"></div>' +
+          UI.numInput('f-price', s.pricePerKg || '', { placeholder: 'مثلاً 75000' }) + '</div>' +
         '<div class="field"><label>تعداد مرغ فروخته‌شده</label>' +
-          '<input type="number" inputmode="numeric" id="f-count" min="0" step="1" value="' + (s.soldCount != null && s.soldCount !== '' ? s.soldCount : '') + '" placeholder="' + J.faDigits(r.alive) + ' (باقی‌مانده‌ی گله)">' +
+          UI.numInput('f-count', s.soldCount != null && s.soldCount !== '' ? s.soldCount : '',
+                      { mode: 'int', placeholder: r.alive + ' (باقی‌مانده‌ی گله)' }) +
           '<div class="hint">خالی بگذارید تا تعداد باقی‌مانده‌ی گله (' + J.num(r.alive) + ' قطعه) حساب شود.</div></div>' +
         '<div class="field"><label>درآمد دیگر (کود، کیسه…) — تومان</label>' +
-          '<input type="number" inputmode="decimal" id="f-extra" min="0" step="any" value="' + (s.extraIncome || '') + '" placeholder="۰"></div>' +
+          UI.numInput('f-extra', s.extraIncome || '', { placeholder: '0' }) + '</div>' +
         '<div class="field"><label>تاریخ فروش</label>' + UI.jdateHTML('date', s.date || J.todayISO()) + '</div>' +
         '<div class="card" style="margin:0"><div id="f-preview"></div></div>',
       onMount: function (root) {

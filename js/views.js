@@ -219,13 +219,22 @@
     }
 
     var r = Calc.report(cycle);
-    var cats = Store.CATEGORIES.map(function (c) {
+
+    // اگر هزینه‌ای با دسته‌ی قدیمی مانده باشد، آخر فهرست نشان داده می‌شود
+    // تا مبلغش بی‌صدا از چشم پنهان نماند.
+    var known = Store.CATEGORIES.map(function (c) { return c.id; });
+    var extra = [];
+    (cycle.expenses || []).forEach(function (e) {
+      if (known.indexOf(e.cat) < 0 && extra.indexOf(e.cat) < 0) extra.push(e.cat);
+    });
+
+    var cats = Store.CATEGORIES.concat(extra.map(Store.category)).map(function (c) {
       var d = r.byCat[c.id] || { qty: 0, total: 0, count: 0 };
       var share = r.totalCost > 0 ? (d.total / r.totalCost) * 100 : 0;
       return '<div class="item tap" data-act="cat-open" data-cat="' + c.id + '">' +
         '<span class="ico">' + c.icon + '</span>' +
         '<div class="body"><div class="t">' + esc(c.label) + '</div>' +
-        '<div class="s">' + (d.count ? J.num(d.qty, 1) + ' ' + esc(c.unit) + ' • ' + J.num(share, 1) + '٪ هزینه'
+        '<div class="s">' + (d.count ? J.qty(d.qty) + ' ' + esc(c.unit) + ' • ' + J.num(share, 1) + '٪ هزینه'
                                      : 'ثبت نشده') + '</div></div>' +
         '<span class="val money">' + J.num(d.total) + '</span></div>';
     }).join('');

@@ -14,14 +14,19 @@
     { id: 'corn',        label: 'ذرت',        icon: '🌽', unit: 'کیلوگرم' },
     { id: 'soy',         label: 'سویا',       icon: '🫘', unit: 'کیلوگرم' },
     { id: 'concentrate', label: 'کنسانتره',   icon: '🧪', unit: 'کیلوگرم' },
-    { id: 'salt',        label: 'نمک',        icon: '🧂', unit: 'کیلوگرم' },
-    { id: 'paper',       label: 'کاغذ بستر',  icon: '📜', unit: 'بسته' },
+    { id: 'drug',        label: 'دارو',       icon: '💊', unit: 'مورد' },
     { id: 'vaccine',     label: 'واکسن',      icon: '💉', unit: 'دوز' },
+    { id: 'transport',   label: 'حمل و نقل',  icon: '🚚', unit: 'سرویس' },
+    { id: 'rent',        label: 'اجاره',      icon: '🏠', unit: 'ماه' },
     { id: 'repair',      label: 'تعمیرات',    icon: '🔧', unit: 'مورد' },
     { id: 'bills',       label: 'قبوض',       icon: '🧾', unit: 'مورد' },
     { id: 'worker',      label: 'کارگر',      icon: '👷', unit: 'مورد' },
     { id: 'misc',        label: 'متفرقه',     icon: '📦', unit: 'مورد' }
   ];
+
+  /* دسته‌هایی که دیگر جدا نیستند و زیرمجموعه‌ی «متفرقه» شده‌اند.
+     هزینه‌های قبلی پاک نمی‌شوند؛ به متفرقه منتقل و نامشان در توضیح نوشته می‌شود. */
+  var MERGED_INTO_MISC = { salt: 'نمک', paper: 'کاغذ بستر' };
 
   /* دانه‌هایی که در محاسبه‌ی «دان مصرفی» به‌عنوان خوراک حساب می‌شوند */
   var FEED_CATEGORIES = ['starter', 'corn', 'soy', 'concentrate'];
@@ -32,7 +37,7 @@
 
   function defaultState() {
     return {
-      version: 1,
+      version: 2,
       settings: {
         managerPin: '1234',
         workerPin: '1111',
@@ -69,13 +74,33 @@
     };
   }
 
+  /* ارقام فارسی، جداکننده‌ی هزارگان و علامت اعشار همگی پذیرفته می‌شوند */
   function num(v) {
-    var n = parseFloat(String(v == null ? '' : v).replace(/[^\d.\-]/g, ''));
-    return isNaN(n) ? 0 : n;
+    if (typeof v === 'number') return isNaN(v) ? 0 : v;
+    return global.J.parseNum(v);
   }
 
   var state = null;
   var listeners = [];
+
+  /** داده‌های ساخته‌شده با نسخه‌های قبلی برنامه را به ساختار امروز می‌آورد */
+  function migrate(s) {
+    var changed = false;
+    if (!(s.version >= 2)) {
+      s.cycles.forEach(function (c) {
+        (c.expenses || []).forEach(function (e) {
+          var oldLabel = MERGED_INTO_MISC[e.cat];
+          if (!oldLabel) return;
+          e.note = oldLabel + (e.note ? ' — ' + e.note : '');
+          e.cat = 'misc';
+          changed = true;
+        });
+      });
+      s.version = 2;
+      changed = true;
+    }
+    return changed;
+  }
 
   function load() {
     try {
@@ -87,6 +112,7 @@
     }
     if (!state.settings) state.settings = defaultState().settings;
     if (!Array.isArray(state.cycles)) state.cycles = [];
+    if (migrate(state)) save();
     return state;
   }
 
@@ -204,6 +230,7 @@
     if (!data || !Array.isArray(data.cycles)) throw new Error('فایل پشتیبان معتبر نیست');
     state = data;
     if (!state.settings) state.settings = defaultState().settings;
+    migrate(state);
     save();
   }
 
