@@ -5,7 +5,7 @@
  * کرده‌اند تا ابد همان نسخه‌ی قدیمی را نشان می‌دهند. با عوض شدن VERSION،
  * حافظه‌ی قبلی پاک و نسخه‌ی تازه گرفته می‌شود.
  */
-var VERSION = 'morghino-v3';
+var VERSION = 'morghino-v4';
 var ASSETS = [
   './',
   './index.html',

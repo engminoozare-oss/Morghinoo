@@ -214,9 +214,19 @@ body.no-tabs { --tabbar-h: 4px; }
   padding: 12px 10px;
   text-align: center;
   box-shadow: var(--shadow);
+  min-width: 0;              /* تا عدد بلند، ستون را پهن نکند */
+  overflow: hidden;
 }
 .stat .k { font-size: 13px; color: var(--muted); display: block; }
-.stat .v { font-size: 22px; font-weight: 800; display: block; line-height: 1.4; }
+.stat .v {
+  font-size: 22px;
+  font-weight: 800;
+  display: block;
+  line-height: 1.4;
+  white-space: nowrap;       /* عدد هیچ‌وقت وسطش نمی‌شکند */
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
+}
 .stat .u { font-size: 12px; color: var(--muted); }
 .stat.ok    { background: var(--ok-bg); }
 .stat.warn  { background: var(--warn-bg); }
@@ -228,6 +238,98 @@ body.no-tabs { --tabbar-h: 4px; }
 
 .progress { height: 10px; background: var(--line); border-radius: 99px; overflow: hidden; margin-top: 8px; }
 .progress > i { display: block; height: 100%; background: linear-gradient(90deg, var(--brand), var(--brand-2)); }
+
+/* ---------- کارت مالی ---------- */
+/* عددهای پول در مرغداری ۹ تا ۱۱ رقمی‌اند؛ هر کدام یک سطر کامل می‌گیرند
+   تا هیچ‌وقت از کادر بیرون نزنند، و نوارها اندازه‌شان را کنار هم نشان می‌دهند. */
+
+.money-card { padding: 16px 14px 14px; }
+
+.ms-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ms-head .k { font-size: 14px; font-weight: 700; color: var(--muted); }
+
+.ms-hero {
+  display: block;
+  text-align: center;
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1.45;
+  white-space: nowrap;
+  overflow: hidden;
+  padding: 2px 0 4px;
+  font-variant-numeric: tabular-nums;
+}
+.ms-hero .u { font-size: 15px; font-weight: 700; color: var(--muted); margin-inline-start: 4px; }
+.ms-hero.pos { color: var(--ok); }
+.ms-hero.neg { color: var(--bad); }
+.ms-hero.idle { font-size: 21px; color: var(--muted); font-weight: 700; }
+
+.ms-sub { text-align: center; font-size: 12.5px; color: var(--muted); margin: 0 0 4px; }
+
+.ms-rows { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+
+.ms-row {
+  background: #faf6ef;
+  border-radius: 14px;
+  padding: 10px 12px 11px;
+}
+.ms-row .top {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.ms-row .ico { font-size: 17px; line-height: 1; }
+.ms-row .lbl { font-size: 14px; color: var(--muted); font-weight: 700; flex: 1; min-width: 0; }
+.ms-row .v {
+  font-size: 19px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+.ms-row .v .u { font-size: 11.5px; font-weight: 700; color: var(--muted); margin-inline-start: 3px; }
+.ms-row .bar {
+  height: 8px;
+  border-radius: 99px;
+  background: #ece3d5;
+  overflow: hidden;
+  margin-top: 8px;
+}
+.ms-row .bar > i { display: block; height: 100%; border-radius: 99px; }
+.ms-row.income .v { color: var(--info); }
+.ms-row.income .bar > i { background: linear-gradient(90deg, #6ea8dd, var(--info)); }
+.ms-row.cost .v { color: var(--bad); }
+.ms-row.cost .bar > i { background: linear-gradient(90deg, #ee8d88, var(--bad)); }
+
+.ms-foot {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+.ms-foot .box {
+  background: #faf6ef;
+  border-radius: 14px;
+  padding: 9px 10px;
+  text-align: center;
+  min-width: 0;
+  overflow: hidden;
+}
+.ms-foot .box .k { display: block; font-size: 11.5px; color: var(--muted); }
+.ms-foot .box .v {
+  display: block;
+  font-size: 16px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
+}
 
 /* ---------- دکمه‌ها ---------- */
 
@@ -296,7 +398,14 @@ body.no-tabs { --tabbar-h: 4px; }
 .item .body { flex: 1; min-width: 0; }
 .item .t { font-weight: 700; font-size: 15px; }
 .item .s { font-size: 13px; color: var(--muted); }
-.item .val { font-weight: 800; font-size: 15px; white-space: nowrap; }
+.item .val {
+  font-weight: 800;
+  font-size: 15px;
+  white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
+}
 .item.tap { cursor: pointer; }
 .item.tap:active { background: #fdf7ee; }
 
@@ -512,3 +621,5 @@ hr.sep { border: 0; border-top: 1px solid var(--line); margin: 14px 0; }
   body { background: #fff; }
   .card, .stat { box-shadow: none; border: 1px solid #ddd; }
 }
+
+.ms-foot .box .v .u { font-size: 10.5px; font-weight: 700; color: var(--muted); }

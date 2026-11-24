@@ -60,6 +60,7 @@
     });
 
     if (opts.onMount) opts.onMount(wrap);
+    fit(wrap);
     return wrap;
   }
 
@@ -256,9 +257,36 @@
   function stat(cls, key, value, unit) {
     return '<div class="stat ' + (cls || '') + '">' +
       '<span class="k">' + esc(key) + '</span>' +
-      '<span class="v money">' + value + (unit ? ' <span class="u">' + esc(unit) + '</span>' : '') + '</span>' +
+      '<span class="v money" data-fit>' + value +
+        (unit ? ' <span class="u">' + esc(unit) + '</span>' : '') + '</span>' +
       '</div>';
   }
+
+  /* ---------- جا شدن عددهای بلند ----------
+     عددهای تومانی گاهی ۱۰ رقمی می‌شوند. هر عنصری که data-fit داشته باشد،
+     اگر پهن‌تر از جای خودش باشد قلمش کمی کوچک می‌شود تا جا بیفتد؛
+     این‌طور هیچ‌وقت صفحه افقی نمی‌لغزد و عدد هم کامل خوانده می‌شود. */
+
+  function fitOne(el) {
+    el.style.fontSize = '';
+    var size = parseFloat(window.getComputedStyle(el).fontSize) || 16;
+    var min = Math.max(11, size * 0.45);
+    var guard = 0;
+    while (el.scrollWidth > el.clientWidth + 1 && size > min && guard++ < 60) {
+      size -= 1;
+      el.style.fontSize = size + 'px';
+    }
+  }
+
+  function fit(root) {
+    $$('[data-fit]', root || document).forEach(fitOne);
+  }
+
+  var fitTimer = null;
+  window.addEventListener('resize', function () {
+    clearTimeout(fitTimer);
+    fitTimer = setTimeout(function () { fit(); }, 120);
+  });
 
   function emptyBox(icon, text) {
     return '<div class="empty"><span class="ico">' + icon + '</span>' + esc(text) + '</div>';
@@ -273,7 +301,7 @@
     modal: modal, closeModal: closeModal, confirmBox: confirmBox,
     jdateHTML: jdateHTML, readJDate: readJDate, setJDate: setJDate, syncJDateDays: syncJDateDays,
     numInput: numInput, setNum: setNum, getNum: getNum, formatNum: formatNum,
-    stat: stat, emptyBox: emptyBox, money: money, fcrText: fcrText,
+    stat: stat, emptyBox: emptyBox, money: money, fcrText: fcrText, fit: fit,
     state: state
   };
 })(window);

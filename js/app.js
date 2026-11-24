@@ -6,7 +6,7 @@
       Notify = global.Notify, UI = global.UI, Views = global.Views, Dialogs = global.Dialogs;
   var $ = UI.$, $$ = UI.$$, esc = UI.esc;
 
-  var APP_VERSION = '1.2';
+  var APP_VERSION = '1.3';
   var deferredInstall = null;
 
   /* ================= ورود ================= */
@@ -130,6 +130,7 @@
       ' • ' + (isManager ? 'مدیر' : 'کارگر') + (cycle.status === 'closed' ? ' • بسته‌شده' : '');
 
     $('#view').innerHTML = Views.render(UI.state.tab, cycle, isManager);
+    UI.fit($('#view'));
     $('#view').scrollTop = 0;
     window.scrollTo(0, 0);
   }

@@ -206,6 +206,60 @@
       cycleInfoCard(cycle, true);
   }
 
+  /* ================= کارت مالی ================= */
+
+  /**
+   * خلاصه‌ی پول دوره. عددهای تومانی ۹ تا ۱۱ رقمی‌اند، پس هر کدام یک سطر
+   * کامل می‌گیرند و نوار زیرشان اندازه‌ها را کنار هم نشان می‌دهد؛
+   * این‌طور هیچ عددی از لبه‌ی صفحه بیرون نمی‌زند.
+   */
+  function moneyCard(cycle, r) {
+    var hasIncome = r.income > 0;
+    var base = Math.max(r.income, r.totalCost, 1);
+
+    function bar(cls, icon, label, value, width) {
+      return '<div class="ms-row ' + cls + '">' +
+        '<div class="top"><span class="ico">' + icon + '</span>' +
+        '<span class="lbl">' + esc(label) + '</span>' +
+        '<span class="v" data-fit>' + J.num(value) + '<span class="u">تومان</span></span></div>' +
+        '<div class="bar"><i style="width:' + width.toFixed(1) + '%"></i></div></div>';
+    }
+
+    var hero = hasIncome
+      ? '<span class="ms-hero ' + (r.profit >= 0 ? 'pos' : 'neg') + '" data-fit>' +
+          (r.profit < 0 ? '−' : '') + J.num(Math.abs(r.profit)) +
+          '<span class="u">تومان</span></span>' +
+        '<p class="ms-sub">' + (r.profit >= 0
+          ? 'به ازای هر جوجه ' + J.num(r.alive > 0 ? r.profit / r.alive : 0) + ' تومان'
+          : 'فعلاً ' + J.num(Math.abs(r.profit)) + ' تومان عقب هستید') + '</p>'
+      : '<span class="ms-hero idle" data-fit>هنوز حساب نشده</span>' +
+        '<p class="ms-sub">فی روز مرغ را وارد کنید تا سود دوره حساب شود.</p>';
+
+    return '<div class="card money-card">' +
+      '<div class="ms-head"><span class="k">🧮 سود خالص دوره</span>' +
+        (hasIncome
+          ? '<span class="badge ' + (r.profit >= 0 ? 'ok' : 'bad') + '">' +
+            (r.profit >= 0 ? 'سودده' : 'زیان‌ده') + '</span>'
+          : '<button class="btn sm" data-act="sale-edit">💵 ثبت فی</button>') +
+      '</div>' +
+      hero +
+      '<div class="ms-rows">' +
+        (hasIncome ? bar('income', '🧾', 'کل فروش', r.income, (r.income / base) * 100) : '') +
+        bar('cost', '💸', 'کل هزینه', r.totalCost, (r.totalCost / base) * 100) +
+      '</div>' +
+      (hasIncome
+        ? '<div class="ms-foot">' +
+            '<div class="box"><span class="k">هزینه‌ی هر جوجه</span>' +
+            '<span class="v" data-fit>' + J.num(r.costPerBird) +
+            '<span class="u"> تومان</span></span></div>' +
+            '<div class="box"><span class="k">تمام‌شده‌ی هر کیلو</span>' +
+            '<span class="v" data-fit>' + J.num(r.costPerKg) +
+            '<span class="u"> تومان</span></span></div>' +
+          '</div>'
+        : '') +
+      '</div>';
+  }
+
   /* ================= تب ۱: هزینه و درآمد ================= */
 
   function renderMoney(cycle, isManager) {
@@ -236,16 +290,14 @@
         '<div class="body"><div class="t">' + esc(c.label) + '</div>' +
         '<div class="s">' + (d.count ? J.qty(d.qty) + ' ' + esc(c.unit) + ' • ' + J.num(share, 1) + '٪ هزینه'
                                      : 'ثبت نشده') + '</div></div>' +
-        '<span class="val money">' + J.num(d.total) + '</span></div>';
+        // دسته‌ی خالی «۰» نشان ندهد؛ یک خط تیره‌ی کم‌رنگ خواناتر است
+        '<span class="val money" data-fit>' +
+          (d.count ? J.num(d.total) : '<span class="muted">—</span>') + '</span></div>';
     }).join('');
 
     var sale = cycle.sale || {};
 
-    return '<div class="stat-grid three">' +
-        stat('bad', 'کل هزینه', J.num(r.totalCost), 'تومان') +
-        stat('info', 'کل فروش', J.num(r.income), 'تومان') +
-        stat(r.profit >= 0 ? 'ok' : 'bad', 'سود خالص', J.num(r.profit), 'تومان') +
-      '</div>' +
+    return moneyCard(cycle, r) +
 
       '<button class="btn block" data-act="expense-add" style="margin:12px 0">➕ ثبت هزینه‌ی جدید</button>' +
 
@@ -266,20 +318,7 @@
         '<p class="tiny muted" style="margin:8px 2px 0">' +
           'وزن کل = ' + J.num(r.saleBirds) + ' قطعه × ' + J.num(r.avgWeightKg, 3) + ' کیلو = ' + J.num(r.saleWeightKg, 1) + ' کیلو' +
         '</p>' +
-      '</div>' +
-
-      '<div class="card"><h2>🧮 سود دوره</h2>' +
-        '<div class="list">' +
-          row('🧾', 'مبلغ کل فروش', J.num(r.income) + ' تومان') +
-          row('💸', 'مبلغ کل هزینه‌ها', '− ' + J.num(r.totalCost) + ' تومان') +
-        '</div><hr class="sep">' +
-        '<div class="stat ' + (r.profit >= 0 ? 'ok' : 'bad') + '">' +
-          '<span class="k">سود خالص دوره</span>' +
-          '<span class="v money">' + J.num(r.profit) + ' <span class="u">تومان</span></span></div>' +
-        '<div class="stat-grid" style="margin-top:10px">' +
-          stat('', 'هزینه‌ی هر جوجه', J.num(r.costPerBird), 'تومان') +
-          stat('', 'قیمت تمام‌شده‌ی هر کیلو', J.num(r.costPerKg), 'تومان') +
-        '</div></div>';
+      '</div>';
   }
 
   /* ================= تب ۳: جمع‌بندی ================= */
@@ -309,15 +348,11 @@
           stat('info', 'میانگین وزن', J.num(r.avgWeightG), 'گرم') +
           stat('info', 'کل دان', J.num(r.feedKg, 1), 'کیلو') +
         '</div>' +
-        (isManager ? '<div class="stat-grid three" style="margin-top:10px">' +
-          stat('bad', 'هزینه', J.num(r.totalCost), 'تومان') +
-          stat('info', 'فروش', J.num(r.income), 'تومان') +
-          stat(r.profit >= 0 ? 'ok' : 'bad', 'سود', J.num(r.profit), 'تومان') +
-        '</div>' : '') +
         '<p class="tiny muted center" style="margin:10px 0 0">' +
           'دوره‌ی ' + esc(cycle.name) + ' • شروع ' + J.fmt(cycle.start.entryDate) + ' • روز ' + J.num(r.day) +
         '</p>' +
       '</div>' +
+      (isManager ? moneyCard(cycle, r) : '') +
 
       '<div class="card"><div class="card-head"><h2>📝 نکات و جمع‌بندی</h2>' +
         (isManager ? '' : '<span class="badge">فقط خواندنی</span>') + '</div>' +
