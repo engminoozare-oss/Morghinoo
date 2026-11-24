@@ -623,3 +623,18 @@ hr.sep { border: 0; border-top: 1px solid var(--line); margin: 14px 0; }
 }
 
 .ms-foot .box .v .u { font-size: 10.5px; font-weight: 700; color: var(--muted); }
+
+/* دسته‌ی انتخاب‌شده در پنجره‌ی هزینه (وقتی از داخل خود دسته باز شده) */
+.cat-picked {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 2px solid var(--brand);
+  background: var(--warn-bg);
+  border-radius: 16px;
+}
+.cat-picked .ico { font-size: 32px; line-height: 1; }
+.cat-picked .body { flex: 1; min-width: 0; }
+.cat-picked .t { font-weight: 800; font-size: 18px; }
+.cat-picked .s { font-size: 12px; color: var(--muted); }

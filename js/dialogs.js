@@ -233,15 +233,33 @@
     var rec = id ? (cycle.expenses || []).filter(function (r) { return r.id === id; })[0] : null;
     var cat = rec ? rec.cat : (presetCat || 'chick');
 
-    var grid = Store.CATEGORIES.map(function (c) {
-      return '<button type="button" class="cat-btn' + (c.id === cat ? ' sel' : '') + '" data-act="cat" data-v="' + c.id + '">' +
-        '<span class="ico">' + c.icon + '</span><span class="lbl">' + esc(c.label) + '</span></button>';
-    }).join('');
+    /* وقتی از داخل یک دسته «ثبت جدید» زده می‌شود، همان دسته معلوم است؛
+       پس شبکه‌ی همه‌ی دسته‌ها را باز نمی‌کنیم و فقط دکمه‌ی «تغییر» می‌گذاریم. */
+    var knownCat = !!(rec || presetCat);
+
+    function catPicked() {
+      var c = Store.category(cat);
+      return '<div class="cat-picked">' +
+        '<span class="ico">' + c.icon + '</span>' +
+        '<div class="body"><div class="s">نوع هزینه</div>' +
+        '<div class="t">' + esc(c.label) + '</div></div>' +
+        '<button type="button" class="btn sm ghost" data-act="cat-change">🔁 تغییر</button>' +
+        '</div>';
+    }
+
+    function catGrid() {
+      return '<div class="cat-grid">' + Store.CATEGORIES.map(function (c) {
+        return '<button type="button" class="cat-btn' + (c.id === cat ? ' sel' : '') +
+          '" data-act="cat" data-v="' + c.id + '">' +
+          '<span class="ico">' + c.icon + '</span><span class="lbl">' + esc(c.label) + '</span></button>';
+      }).join('') + '</div>';
+    }
 
     UI.modal({
       title: rec ? '✎ ویرایش هزینه' : '➕ هزینه‌ی جدید',
       body:
-        '<div class="field"><label>نوع هزینه</label><div class="cat-grid">' + grid + '</div></div>' +
+        '<div class="field" id="cat-field">' +
+          (knownCat ? catPicked() : '<label>نوع هزینه</label>' + catGrid()) + '</div>' +
         '<div class="grid-2">' +
           '<div class="field"><label>مقدار <span class="muted" id="f-unit">(' + esc(Store.category(cat).unit) + ')</span></label>' +
             UI.numInput('f-qty', rec ? rec.qty : '', { placeholder: '0' }) + '</div>' +
@@ -280,10 +298,13 @@
         total.addEventListener('input', fromTotal);
       },
       onAct: function (act, btn, root) {
+        if (act === 'cat-change') {
+          // فهرست همه‌ی دسته‌ها باز می‌شود تا بشود دسته را عوض کرد
+          $('#cat-field', root).innerHTML = '<label>نوع هزینه را انتخاب کنید</label>' + catGrid();
+        }
         if (act === 'cat') {
           cat = btn.getAttribute('data-v');
-          $$('.cat-btn', root).forEach(function (c) { c.classList.remove('sel'); });
-          btn.classList.add('sel');
+          $('#cat-field', root).innerHTML = catPicked();   // دوباره جمع می‌شود
           $('#f-unit', root).textContent = '(' + Store.category(cat).unit + ')';
         }
         if (act === 'del') {

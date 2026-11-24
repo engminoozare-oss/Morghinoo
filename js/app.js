@@ -6,7 +6,7 @@
       Notify = global.Notify, UI = global.UI, Views = global.Views, Dialogs = global.Dialogs;
   var $ = UI.$, $$ = UI.$$, esc = UI.esc;
 
-  var APP_VERSION = '1.3';
+  var APP_VERSION = '1.4';
   var deferredInstall = null;
 
   /* ================= ورود ================= */
