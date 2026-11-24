@@ -9,6 +9,9 @@
 (function (global) {
   'use strict';
 
+  /** رکوردهای زنده‌ی یک فهرست؛ حذف‌شده‌ها در محاسبه نمی‌آیند */
+  function L(cycle, name) { return global.Store.list(cycle, name); }
+
   function sum(arr, fn) {
     return arr.reduce(function (a, x) { return a + (Number(fn(x)) || 0); }, 0);
   }
@@ -20,7 +23,7 @@
 
   /** آخرین رکورد وزن‌کشی تا تاریخ داده‌شده */
   function latestWeight(cycle, date) {
-    var rows = upto(cycle.weights || [], date).slice().sort(function (a, b) {
+    var rows = upto(L(cycle, 'weights'), date).slice().sort(function (a, b) {
       return a.date < b.date ? -1 : 1;
     });
     return rows.length ? rows[rows.length - 1] : null;
@@ -32,9 +35,9 @@
     date = date || J.todayISO();
 
     var flock = Number(cycle.start.flockCount) || 0;
-    var deaths = sum(upto(cycle.mortality || [], date), function (r) { return r.count; });
+    var deaths = sum(upto(L(cycle, 'mortality'), date), function (r) { return r.count; });
     var alive = Math.max(0, flock - deaths);
-    var feedKg = sum(upto(cycle.feed || [], date), function (r) { return r.kg; });
+    var feedKg = sum(upto(L(cycle, 'feed'), date), function (r) { return r.kg; });
 
     var w = latestWeight(cycle, date);
     var avgWeightG = w ? Number(w.avgWeight) || 0 : Number(cycle.start.initialWeight) || 0;
@@ -47,7 +50,7 @@
     var duration = Number(cycle.start.durationDays) || 90;
 
     /* ---- هزینه‌ها ---- */
-    var expenses = cycle.expenses || [];
+    var expenses = L(cycle, 'expenses');
     var totalCost = sum(expenses, function (e) { return e.total; });
     var byCat = {};
     global.Store.CATEGORIES.forEach(function (c) { byCat[c.id] = { qty: 0, total: 0, count: 0 }; });
@@ -107,14 +110,14 @@
   /** تاریخ وزن‌کشی بعدی: هفت روز پس از آخرین وزن‌کشی (یا پس از ورود جوجه) */
   function nextWeighing(cycle) {
     var J = global.J;
-    var rows = (cycle.weights || []).slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+    var rows = L(cycle, 'weights').slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
     var base = rows.length ? rows[rows.length - 1].date : cycle.start.entryDate;
     return base ? J.addDays(base, 7) : null;
   }
 
   /** روند وزن هفتگی همراه با نرخ تبدیل همان تاریخ */
   function weightTrend(cycle) {
-    var rows = (cycle.weights || []).slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+    var rows = L(cycle, 'weights').slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
     return rows.map(function (r, i) {
       var rep = report(cycle, r.date);
       var prev = i > 0 ? Number(rows[i - 1].avgWeight) || 0 : Number(cycle.start.initialWeight) || 0;
@@ -135,7 +138,7 @@
   function recentFeedAvg(cycle, days) {
     var J = global.J, today = J.todayISO();
     var from = J.addDays(today, -(days || 7));
-    var rows = (cycle.feed || []).filter(function (r) { return r.date > from && r.date <= today; });
+    var rows = L(cycle, 'feed').filter(function (r) { return r.date > from && r.date <= today; });
     return rows.length ? sum(rows, function (r) { return r.kg; }) / rows.length : 0;
   }
 

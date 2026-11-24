@@ -37,7 +37,7 @@
     if (cycle.start.entryDate && J.diffDays(cycle.start.entryDate, today) < 0) return [];
 
     // ۱) تلفات روزانه
-    var m = (cycle.mortality || []).filter(function (r) { return r.date === today; })[0];
+    var m = global.Store.list(cycle, 'mortality').filter(function (r) { return r.date === today; })[0];
     if (!m) {
       list.push({
         key: 'mortality-' + today,
@@ -52,7 +52,7 @@
     }
 
     // ۲) دان مصرفی روزانه
-    var f = (cycle.feed || []).filter(function (r) { return r.date === today; })[0];
+    var f = global.Store.list(cycle, 'feed').filter(function (r) { return r.date === today; })[0];
     if (!f) {
       list.push({
         key: 'feed-' + today,
@@ -83,7 +83,7 @@
     }
 
     // ۴) واکسن — روز قبل «فردا روز واکسن» و روز خودش «امروز روز واکسن»
-    (cycle.vaccines || []).forEach(function (v) {
+    global.Store.list(cycle, 'vaccines').forEach(function (v) {
       if (v.done || !v.date) return;
       var d = J.diffDays(today, v.date); // چند روز مانده
       if (d === 1 || d === 0) {

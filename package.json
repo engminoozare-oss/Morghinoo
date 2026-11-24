@@ -1,0 +1,13 @@
+{
+  "name": "morghino",
+  "version": "1.6.0",
+  "description": "مرغینو — برنامه‌ی مدیریت مرغداری و سرویس همگام‌سازی آن",
+  "private": true,
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -5,19 +5,21 @@
  * کرده‌اند تا ابد همان نسخه‌ی قدیمی را نشان می‌دهند. با عوض شدن VERSION،
  * حافظه‌ی قبلی پاک و نسخه‌ی تازه گرفته می‌شود.
  */
-var VERSION = 'morghino-v6';
+var VERSION = 'morghino-v7';
 var ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
   './css/app.css',
   './js/jalali.js',
+  './js/merge.js',
   './js/store.js',
   './js/calc.js',
   './js/notify.js',
   './js/ui.js',
   './js/views.js',
   './js/dialogs.js',
+  './js/sync.js',
   './js/app.js',
   './icons/icon-192.png',
   './icons/icon-256.png',

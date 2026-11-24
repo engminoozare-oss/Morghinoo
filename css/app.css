@@ -670,3 +670,29 @@ hr.sep { border: 0; border-top: 1px solid var(--line); margin: 14px 0; }
 .rtable .n.big { font-size: 16px; }
 .rtable .none { color: var(--muted); font-weight: 400; }
 .rtable .edit { width: 22px; padding-inline: 0; color: #c9bba6; font-size: 13px; }
+
+/* ---------- گزارش امروز کارگر (داشبورد مدیر) ---------- */
+.worker-card { border: 2px solid #cfe0f3; }
+.wt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.wt-box {
+  border-radius: 14px;
+  padding: 12px 8px;
+  text-align: center;
+  background: var(--info-bg);
+  min-width: 0;
+  overflow: hidden;
+}
+.wt-box.todo { background: var(--warn-bg); }
+.wt-box .ico { display: block; font-size: 24px; line-height: 1.2; }
+.wt-box .k { display: block; font-size: 12.5px; color: var(--muted); }
+.wt-box .v {
+  display: block;
+  font-size: 24px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
+}
+.wt-box .v.none { font-size: 16px; color: var(--muted); font-weight: 700; }
+.wt-box .v .u { font-size: 12px; font-weight: 700; color: var(--muted); }
+.wt-box .when { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }

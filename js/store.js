@@ -37,7 +37,8 @@
 
   function defaultState() {
     return {
-      version: 2,
+      version: 3,
+      sync: { url: '', farmId: '', stamp: 0, lastAt: 0 },
       settings: {
         managerPin: '1234',
         workerPin: '1111',
@@ -50,13 +51,22 @@
     };
   }
 
+  /** هر چیزی که تغییر می‌کند زمان تغییرش ثبت می‌شود تا همگام‌سازی بداند
+      کدام نسخه تازه‌تر است */
+  function stamp(obj) {
+    obj.updatedAt = Date.now();
+    return obj;
+  }
+
   function newCycle(data) {
     return {
       id: uid(),
       name: data.name || 'دوره جدید',
       createdAt: new Date().toISOString(),
       status: 'active',
+      updatedAt: Date.now(),
       start: {
+        updatedAt: Date.now(),
         entryDate: data.entryDate,           // تاریخ ورود جوجه (میلادی ISO)
         breed: data.breed || '',             // نژاد
         company: data.company || '',         // شرکت جوجه
@@ -69,8 +79,8 @@
       feed: [],                              // {id, date, kg, note}
       weights: [],                           // {id, date, avgWeight (گرم), sample, note}
       vaccines: [],                          // {id, name, date, done, note}
-      sale: { pricePerKg: 0, extraIncome: 0, soldCount: null, note: '', date: null },
-      summary: { breed: '', vaccine: '', worker: '', feed: '', general: '', rating: 0 }
+      sale: { pricePerKg: 0, extraIncome: 0, soldCount: null, note: '', date: null, updatedAt: 0 },
+      summary: { breed: '', vaccine: '', worker: '', feed: '', general: '', rating: 0, updatedAt: 0 }
     };
   }
 
@@ -97,6 +107,42 @@
         });
       });
       s.version = 2;
+      changed = true;
+    }
+
+    /* نسخه‌ی ۳: آماده شدن برای همگام‌سازی —
+       هر رکورد زمان تغییر می‌گیرد و رکوردهای روزانه شناسه‌ی تاریخ‌محور. */
+    if (!(s.version >= 3)) {
+      var base = Date.now();
+      s.cycles.forEach(function (c) {
+        if (!c.updatedAt) c.updatedAt = base;
+        ['start', 'sale', 'summary'].forEach(function (k) {
+          if (!c[k]) c[k] = {};
+          if (!c[k].updatedAt) c[k].updatedAt = base;
+        });
+        ['expenses', 'mortality', 'feed', 'weights', 'vaccines'].forEach(function (k) {
+          if (!Array.isArray(c[k])) c[k] = [];
+          var seen = {};
+          c[k] = c[k].filter(function (r) {
+            if (!r) return false;
+            if (!r.updatedAt) r.updatedAt = base;
+            if (k === 'mortality' || k === 'feed') {
+              r.id = global.Merge.dailyId(k, r.date);
+              if (seen[r.id]) return false;      // اگر تکراری مانده بود، یکی بس است
+              seen[r.id] = true;
+            } else if (!r.id) {
+              r.id = uid();
+            }
+            return true;
+          });
+        });
+      });
+      s.version = 3;
+      changed = true;
+    }
+
+    if (!s.sync) {
+      s.sync = { url: '', farmId: '', stamp: 0, lastAt: 0 };
       changed = true;
     }
     return changed;
@@ -155,6 +201,11 @@
   /* ---------- رکوردهای یک دوره ---------- */
 
   /** یک رکورد را در لیست مشخص اضافه یا (اگر id داشته باشد) به‌روزرسانی می‌کند */
+  /** رکوردهای زنده‌ی یک فهرست (حذف‌شده‌ها کنار گذاشته می‌شوند) */
+  function list(cycle, listName) {
+    return ((cycle && cycle[listName]) || []).filter(function (r) { return r && !r.deleted; });
+  }
+
   function upsert(listName, rec) {
     var c = activeCycle();
     if (!c) return null;
@@ -162,22 +213,27 @@
     if (rec.id) {
       for (var i = 0; i < c[listName].length; i++) {
         if (c[listName][i].id === rec.id) {
-          c[listName][i] = Object.assign({}, c[listName][i], rec);
+          c[listName][i] = stamp(Object.assign({}, c[listName][i], rec));
           save();
           return c[listName][i];
         }
       }
     }
     rec.id = rec.id || uid();
+    stamp(rec);
     c[listName].push(rec);
     save();
     return rec;
   }
 
+  /* حذف، پاک کردن واقعی نیست: رکورد نشان‌دار می‌شود تا با همگام‌سازی از
+     دستگاه دیگر دوباره زنده نشود. */
   function remove(listName, id) {
     var c = activeCycle();
     if (!c) return;
-    c[listName] = (c[listName] || []).filter(function (r) { return r.id !== id; });
+    (c[listName] || []).forEach(function (r) {
+      if (r.id === id) { r.deleted = true; stamp(r); }
+    });
     save();
   }
 
@@ -185,14 +241,36 @@
   function byDate(listName, date) {
     var c = activeCycle();
     if (!c) return null;
-    return (c[listName] || []).filter(function (r) { return r.date === date; })[0] || null;
+    return list(c, listName).filter(function (r) { return r.date === date; })[0] || null;
   }
 
+  /* شناسه‌ی رکوردهای روزانه از روی تاریخ ساخته می‌شود، نه تصادفی؛ این‌طور
+     اگر کارگر و مدیر هر دو برای یک روز ثبت کنند، دو رکورد تکراری در
+     همگام‌سازی ساخته نمی‌شود و همان یکی به‌روز می‌گردد. */
   function setDaily(listName, date, fields) {
-    var existing = byDate(listName, date);
-    var rec = Object.assign({ date: date }, fields);
-    if (existing) rec.id = existing.id;
+    var rec = Object.assign({ date: date, deleted: false }, fields);
+    rec.id = (listName === 'mortality' || listName === 'feed')
+      ? global.Merge.dailyId(listName, date)
+      : (byDate(listName, date) || {}).id;
     return upsert(listName, rec);
+  }
+
+  /** یکی از بخش‌های ثابت دوره (start / sale / summary) را به‌روز می‌کند */
+  function setObject(key, fields) {
+    var c = activeCycle();
+    if (!c) return null;
+    c[key] = stamp(Object.assign({}, c[key] || {}, fields));
+    save();
+    return c[key];
+  }
+
+  /** فیلدهای خود دوره (نام، وضعیت) */
+  function setCycle(fields) {
+    var c = activeCycle();
+    if (!c) return null;
+    stamp(Object.assign(c, fields));
+    save();
+    return c;
   }
 
   /* ---------- ورود و نقش کاربر ---------- */
@@ -247,8 +325,12 @@
     addCycle: addCycle,
     setActiveCycle: setActiveCycle,
     deleteCycle: deleteCycle,
+    stamp: stamp,
+    list: list,
     upsert: upsert,
     remove: remove,
+    setObject: setObject,
+    setCycle: setCycle,
     byDate: byDate,
     setDaily: setDaily,
     session: session,

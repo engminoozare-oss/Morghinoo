@@ -18,7 +18,7 @@
   function mortalityDialog(date) {
     date = date || J.todayISO();
     var cycle = Store.activeCycle();
-    var rec = (cycle.mortality || []).filter(function (r) { return r.date === date; })[0] || {};
+    var rec = Store.list(cycle, 'mortality').filter(function (r) { return r.date === date; })[0] || {};
     var quick = [0, 1, 2, 3, 5, 10, 20];
 
     UI.modal({
@@ -63,7 +63,7 @@
   function feedDialog(date) {
     date = date || J.todayISO();
     var cycle = Store.activeCycle();
-    var rec = (cycle.feed || []).filter(function (r) { return r.date === date; })[0] || {};
+    var rec = Store.list(cycle, 'feed').filter(function (r) { return r.date === date; })[0] || {};
     var avg = Calc.recentFeedAvg(cycle, 7);
     var types = ['پیش‌دانه', 'میان‌دانه', 'پس‌دانه', 'مخلوط'];
 
@@ -109,7 +109,7 @@
 
   function weightDialog(id) {
     var cycle = Store.activeCycle();
-    var rec = id ? (cycle.weights || []).filter(function (r) { return r.id === id; })[0] : null;
+    var rec = id ? Store.list(cycle, 'weights').filter(function (r) { return r.id === id; })[0] : null;
     var date = rec ? rec.date : J.todayISO();
 
     UI.modal({
@@ -152,7 +152,7 @@
 
   function vaccineDialog(id) {
     var cycle = Store.activeCycle();
-    var rec = id ? (cycle.vaccines || []).filter(function (r) { return r.id === id; })[0] : null;
+    var rec = id ? Store.list(cycle, 'vaccines').filter(function (r) { return r.id === id; })[0] : null;
     var common = ['نیوکاسل', 'گامبورو', 'برونشیت', 'آنفلوانزا', 'آبله'];
 
     UI.modal({
@@ -199,7 +199,7 @@
   /** یادآور روز واکسن — برای مدیر همان پنجره‌ی ویرایش، برای کارگر یک تأیید ساده */
   function vaccineDayDialog(id) {
     var cycle = Store.activeCycle();
-    var v = (cycle.vaccines || []).filter(function (r) { return r.id === id; })[0];
+    var v = Store.list(cycle, 'vaccines').filter(function (r) { return r.id === id; })[0];
     if (!v) { UI.toast('واکسن پیدا نشد'); return; }
     if (Store.isManager()) { vaccineDialog(id); return; }
 
@@ -230,7 +230,7 @@
 
   function expenseDialog(id, presetCat) {
     var cycle = Store.activeCycle();
-    var rec = id ? (cycle.expenses || []).filter(function (r) { return r.id === id; })[0] : null;
+    var rec = id ? Store.list(cycle, 'expenses').filter(function (r) { return r.id === id; })[0] : null;
     var cat = rec ? rec.cat : (presetCat || 'chick');
 
     /* وقتی از داخل یک دسته «ثبت جدید» زده می‌شود، همان دسته معلوم است؛
@@ -338,7 +338,7 @@
   function categoryDialog(catId) {
     var cycle = Store.activeCycle();
     var c = Store.category(catId);
-    var rows = (cycle.expenses || []).filter(function (e) { return e.cat === catId; })
+    var rows = Store.list(cycle, 'expenses').filter(function (e) { return e.cat === catId; })
       .sort(function (a, b) { return a.date < b.date ? 1 : -1; });
     var total = Calc.sum(rows, function (e) { return e.total; });
     var qty = Calc.sum(rows, function (e) { return e.qty; });
@@ -408,14 +408,13 @@
       },
       onOk: function (root) {
         var cnt = $('#f-count', root).value;
-        cycle.sale = {
+        Store.setObject('sale', {
           pricePerKg: numVal(root, '#f-price'),
           soldCount: cnt === '' ? null : Store.num(cnt),
           extraIncome: numVal(root, '#f-extra'),
           date: UI.readJDate(root, 'date'),
           note: ''
-        };
-        Store.save();
+        });
         refresh('اطلاعات فروش ذخیره شد ✅');
       }
     });
@@ -425,8 +424,8 @@
 
   function dayDialog(date) {
     var cycle = Store.activeCycle();
-    var m = (cycle.mortality || []).filter(function (r) { return r.date === date; })[0];
-    var f = (cycle.feed || []).filter(function (r) { return r.date === date; })[0];
+    var m = Store.list(cycle, 'mortality').filter(function (r) { return r.date === date; })[0];
+    var f = Store.list(cycle, 'feed').filter(function (r) { return r.date === date; })[0];
     UI.modal({
       title: '📆 ' + J.fmtWithDay(date),
       body: '<div class="list">' +

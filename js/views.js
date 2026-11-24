@@ -26,8 +26,8 @@
 
   function bigActions(cycle) {
     var today = J.todayISO();
-    var m = (cycle.mortality || []).filter(function (r) { return r.date === today; })[0];
-    var f = (cycle.feed || []).filter(function (r) { return r.date === today; })[0];
+    var m = Store.list(cycle, 'mortality').filter(function (r) { return r.date === today; })[0];
+    var f = Store.list(cycle, 'feed').filter(function (r) { return r.date === today; })[0];
     var next = Calc.nextWeighing(cycle);
     var weighDue = next && next <= today;
 
@@ -50,7 +50,7 @@
 
   function vaccineCard(cycle, isManager) {
     var today = J.todayISO();
-    var rows = (cycle.vaccines || []).slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+    var rows = Store.list(cycle, 'vaccines').slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
     var body;
     if (!rows.length) {
       body = UI.emptyBox('💉', isManager ? 'هنوز واکسنی تعریف نشده است.' : 'مدیر هنوز واکسنی تعریف نکرده است.');
@@ -107,8 +107,8 @@
     for (i = 0; i < 10; i++) {
       var d = J.addDays(today, -i);
       if (cycle.start.entryDate && d < cycle.start.entryDate) break;
-      var m = (cycle.mortality || []).filter(function (r) { return r.date === d; })[0];
-      var f = (cycle.feed || []).filter(function (r) { return r.date === d; })[0];
+      var m = Store.list(cycle, 'mortality').filter(function (r) { return r.date === d; })[0];
+      var f = Store.list(cycle, 'feed').filter(function (r) { return r.date === d; })[0];
       var head = i === 0 ? 'امروز' : (i === 1 ? 'دیروز' : J.weekday(d));
       rows.push('<tr class="tap" data-act="day-edit" data-date="' + d + '">' +
         '<td class="when"><b>' + head + '</b><span>' + J.fmtDay(d) + '</span></td>' +
@@ -166,6 +166,59 @@
       '<span class="val money">' + value + '</span></div>';
   }
 
+  /** «۳ دقیقه پیش» */
+  function relTime(t) {
+    if (!t) return 'هنوز نه';
+    var sec = Math.round((Date.now() - t) / 1000);
+    if (sec < 60) return 'همین الان';
+    var min = Math.round(sec / 60);
+    if (min < 60) return J.num(min) + ' دقیقه پیش';
+    var hr = Math.round(min / 60);
+    if (hr < 24) return J.num(hr) + ' ساعت پیش';
+    return J.num(Math.round(hr / 24)) + ' روز پیش';
+  }
+
+  /**
+   * داشبورد مدیر: ثبت‌های امروزِ کارگر.
+   * فقط وقتی نشان داده می‌شود که همگام‌سازی روشن باشد، چون بدون سرور
+   * اطلاعات کارگر اصلاً به این گوشی نمی‌رسد و نشان دادنش گمراه‌کننده است.
+   */
+  function workerTodayCard(cycle) {
+    var Sync = global.Sync;
+    if (!Sync || !Sync.isOn()) return '';
+
+    var today = J.todayISO();
+    var m = Store.list(cycle, 'mortality').filter(function (r) { return r.date === today; })[0];
+    var f = Store.list(cycle, 'feed').filter(function (r) { return r.date === today; })[0];
+    var st = Sync.state;
+
+    function box(icon, label, rec, value, unit) {
+      return '<div class="wt-box ' + (rec ? 'done' : 'todo') + '">' +
+        '<span class="ico">' + icon + '</span>' +
+        '<span class="k">' + esc(label) + '</span>' +
+        (rec
+          ? '<span class="v" data-fit>' + value + ' <span class="u">' + esc(unit) + '</span></span>' +
+            '<span class="when">ثبت ' + relTime(rec.updatedAt) + '</span>'
+          : '<span class="v none">ثبت نشده</span><span class="when">منتظر کارگر</span>') +
+        '</div>';
+    }
+
+    var line = st.status === 'ok' ? 'آخرین به‌روزرسانی ' + relTime(st.lastOk)
+      : st.status === 'syncing' ? 'در حال گرفتن تازه‌ترین گزارش…'
+      : st.status === 'offline' ? '📴 اینترنت وصل نیست؛ آخرین گزارش ' + relTime(st.lastOk)
+      : st.message || 'همگام‌سازی ناموفق';
+
+    return '<div class="card worker-card">' +
+      '<div class="card-head"><h2>📡 گزارش امروز کارگر</h2>' +
+        '<button class="btn sm ghost" data-act="sync">🔄</button></div>' +
+      '<div class="wt-grid">' +
+        box('🪶', 'تلفات امروز', m, m ? J.num(m.count) : '', 'قطعه') +
+        box('🌾', 'دان امروز', f, f ? J.num(f.kg, 1) : '', 'کیلو') +
+      '</div>' +
+      '<p class="tiny muted center" style="margin:10px 0 0">' + esc(line) + '</p>' +
+      '</div>';
+  }
+
   function statusCard(cycle, isManager) {
     var r = Calc.report(cycle);
     var mortalityCls = r.mortalityPct > 8 ? 'bad' : (r.mortalityPct > 4 ? 'warn' : 'ok');
@@ -208,7 +261,8 @@
         weightTable(cycle, false);
     }
 
-    return reminderCards(cycle, true) +
+    return workerTodayCard(cycle) +
+      reminderCards(cycle, true) +
       bigActions(cycle) +
       statusCard(cycle, true) +
       fcrCard(cycle) +
@@ -290,7 +344,7 @@
     // تا مبلغش بی‌صدا از چشم پنهان نماند.
     var known = Store.CATEGORIES.map(function (c) { return c.id; });
     var extra = [];
-    (cycle.expenses || []).forEach(function (e) {
+    Store.list(cycle, 'expenses').forEach(function (e) {
       if (known.indexOf(e.cat) < 0 && extra.indexOf(e.cat) < 0) extra.push(e.cat);
     });
 

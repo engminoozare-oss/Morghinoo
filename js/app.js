@@ -6,7 +6,7 @@
       Notify = global.Notify, UI = global.UI, Views = global.Views, Dialogs = global.Dialogs;
   var $ = UI.$, $$ = UI.$$, esc = UI.esc;
 
-  var APP_VERSION = '1.5';
+  var APP_VERSION = '1.6';
   var deferredInstall = null;
 
   /* ================= ورود ================= */
@@ -90,6 +90,12 @@
     handleShortcut();
     maybeAskNotifications();
     Notify.startWatching(Store.activeCycle, function () { return Store.get().settings; });
+
+    // همگام‌سازی: وضعیتش در سربرگ دیده می‌شود و با رسیدن داده‌ی تازه،
+    // صفحه خودش به‌روز می‌شود تا مدیر ثبت‌های کارگر را ببیند.
+    global.Sync.onChange(refreshSyncButton);
+    global.Sync.start(function () { render(); });
+    refreshSyncButton();
   }
 
   function render() {
@@ -186,13 +192,12 @@
         };
         if (!data.flockCount) { UI.toast('تعداد گله را وارد کنید'); return; }
         if (c) {
-          c.name = data.name;
-          c.start = {
+          Store.setCycle({ name: data.name });
+          Store.setObject('start', {
             entryDate: data.entryDate, breed: data.breed, company: data.company,
             flockCount: data.flockCount, initialWeight: data.initialWeight,
             durationDays: data.durationDays
-          };
-          Store.save();
+          });
         } else {
           Store.addCycle(data);
           UI.state.tab = 'report';
@@ -221,6 +226,8 @@
         item('cycles', '📚', 'دوره‌ها', J.faDigits(cycles.length)) +
         (isManager ? item('cycle-edit', '✎', 'ویرایش مشخصات دوره') : '') +
         (isManager ? item('vaccine-add', '💉', 'افزودن واکسن') : '') +
+        item('sync', '📡', 'همگام‌سازی با سرور',
+             global.Sync.isOn() ? 'روشن' : 'خاموش') +
         item('notif', '🔔', 'اعلان‌ها و یادآوری') +
         (isManager ? item('settings', '⚙️', 'تنظیمات و رمزها') : '') +
         item('install', '📲', 'نصب برنامه روی گوشی/ویندوز') +
@@ -404,6 +411,184 @@
     });
   }
 
+  /* ================= همگام‌سازی با سرور ================= */
+
+  function syncStatusText() {
+    var st = global.Sync.state;
+    if (st.status === 'off') return { icon: '☁️', text: 'وصل نیست', cls: '' };
+    if (st.status === 'syncing') return { icon: '🔄', text: 'در حال همگام‌سازی…', cls: 'info' };
+    if (st.status === 'offline') return { icon: '📴', text: 'اینترنت نیست — ثبت‌ها محفوظ است', cls: 'bad' };
+    if (st.status === 'error') return { icon: '⚠️', text: st.message || 'خطا', cls: 'bad' };
+    return { icon: '✅', text: 'به‌روز — ' + relTime(st.lastOk), cls: 'ok' };
+  }
+
+  /** «۳ دقیقه پیش» */
+  function relTime(t) {
+    if (!t) return '—';
+    var sec = Math.round((Date.now() - t) / 1000);
+    if (sec < 60) return 'همین الان';
+    var min = Math.round(sec / 60);
+    if (min < 60) return J.num(min) + ' دقیقه پیش';
+    var hr = Math.round(min / 60);
+    if (hr < 24) return J.num(hr) + ' ساعت پیش';
+    return J.num(Math.round(hr / 24)) + ' روز پیش';
+  }
+
+  function refreshSyncButton() {
+    var btn = $('#btn-sync');
+    if (!btn) return;
+    var on = global.Sync.isOn();
+    btn.classList.toggle('hidden', !on);
+    if (on) btn.textContent = syncStatusText().icon;
+  }
+
+  function syncDialog() {
+    var Sync = global.Sync;
+    var cfg = Sync.config();
+    var isManager = Store.isManager();
+
+    if (Sync.isOn()) {
+      var st = syncStatusText();
+      UI.modal({
+        title: '📡 همگام‌سازی',
+        body:
+          '<div class="alert ' + (st.cls === 'ok' ? 'ok' : st.cls === 'bad' ? 'due' : 'info') + '">' +
+            '<span class="ico">' + st.icon + '</span><div class="body">' +
+            '<div class="t">' + esc(st.text) + '</div>' +
+            '<div class="s">گزارش کارگر و مدیر خودکار بین گوشی‌ها رد و بدل می‌شود.</div></div></div>' +
+          '<div class="list">' +
+            '<div class="item"><span class="ico">🔑</span><div class="body"><div class="s">کد مرغداری</div>' +
+              '<div class="t" style="letter-spacing:1px">' + esc(cfg.farmId) + '</div></div></div>' +
+            '<div class="item"><span class="ico">🌐</span><div class="body"><div class="s">آدرس سرور</div>' +
+              '<div class="t tiny" style="word-break:break-all">' + esc(cfg.url) + '</div></div></div>' +
+          '</div>' +
+          '<button class="btn block" data-act="sync-now" style="margin-top:12px">🔄 همگام‌سازی همین حالا</button>' +
+          '<button class="btn ghost block" data-act="sync-share" style="margin-top:8px">📨 فرستادن کد برای کارگر</button>' +
+          (isManager ? '<button class="btn soft block" data-act="sync-off" style="margin-top:8px">قطع اتصال این گوشی</button>' : ''),
+        footer: '<button class="btn ghost" data-act="close-modal">بستن</button>',
+        onAct: function (act) {
+          if (act === 'sync-now') {
+            UI.toast('در حال همگام‌سازی…');
+            Sync.run({ full: true }).then(function () {
+              UI.closeModal();
+              render();
+              UI.toast(Sync.state.status === 'ok' ? 'به‌روز شد ✅' : (Sync.state.message || 'ناموفق'));
+            });
+          }
+          if (act === 'sync-share') {
+            var txt = 'برنامه‌ی مرغینو — برای اتصال:\nآدرس سرور: ' + cfg.url + '\nکد مرغداری: ' + cfg.farmId;
+            if (navigator.share) navigator.share({ text: txt }).catch(function () {});
+            else if (navigator.clipboard) navigator.clipboard.writeText(txt).then(function () { UI.toast('کپی شد ✅'); });
+          }
+          if (act === 'sync-off') {
+            UI.confirmBox('قطع اتصال', 'این گوشی دیگر با بقیه همگام نمی‌شود. اطلاعات روی خودش می‌ماند.', function () {
+              Sync.disconnect();
+              refreshSyncButton();
+              Dialogs.refresh('اتصال قطع شد');
+            }, 'بله، قطع کن');
+          }
+        }
+      });
+      return;
+    }
+
+    UI.modal({
+      title: '📡 اتصال به سرور',
+      body:
+        '<p class="tiny muted">با اتصال به سرور، هرچه کارگر ثبت می‌کند خودکار روی گوشی مدیر هم دیده می‌شود. ' +
+          'بدون اتصال هم برنامه کامل کار می‌کند، ولی اطلاعات هر گوشی جداست.</p>' +
+        '<div class="field"><label>🌐 آدرس سرور</label>' +
+          '<input type="text" id="f-url" dir="ltr" value="' + esc(cfg.url || '') + '" placeholder="https://morghino.liara.run"></div>' +
+        '<hr class="sep">' +
+        '<div class="field"><label>🔑 کد مرغداری</label>' +
+          '<input type="text" id="f-farm" dir="ltr" placeholder="MRG-XXXX-XXXX" style="letter-spacing:1px"></div>' +
+        '<div class="field"><label>رمز ۴ رقمی شما</label>' +
+          UI.numInput('f-pin', '', { mode: 'pin', placeholder: '····' }) +
+          '<div class="hint">همان رمزی که مدیر برای شما گفته است.</div></div>' +
+        '<button class="btn block" data-act="sync-join">🔗 اتصال به این مرغداری</button>' +
+        (isManager
+          ? '<hr class="sep"><p class="tiny muted">اگر اولین بار است و هنوز مرغداری‌ای روی سرور ندارید:</p>' +
+            '<button class="btn ghost block" data-act="sync-create">➕ ساخت مرغداری تازه روی سرور</button>'
+          : ''),
+      footer: '<button class="btn ghost" data-act="close-modal">بستن</button>',
+      onAct: function (act, btn, root) {
+        var url = $('#f-url', root).value.trim();
+        if (!/^https?:\/\//i.test(url)) { UI.toast('آدرس سرور را با https:// بنویسید'); return; }
+
+        if (act === 'sync-create') {
+          var s = Store.get();
+          UI.toast('در حال ساخت…');
+          global.Sync.createFarm(url, s.settings.farmName, s.settings.managerPin, s.settings.workerPin)
+            .then(function (data) {
+              UI.closeModal();
+              showFarmCode(data.farmId, url);
+              global.Sync.run({ full: true }).then(refreshSyncButton);
+            })
+            .catch(function (e) { UI.toast(e.message || 'ساخت ناموفق بود'); });
+          return;
+        }
+
+        if (act === 'sync-join') {
+          var farmId = $('#f-farm', root).value.trim().toUpperCase();
+          var pin = J.latinDigits($('#f-pin', root).value).trim();
+          if (!farmId) { UI.toast('کد مرغداری را وارد کنید'); return; }
+          if (!/^\d{4}$/.test(pin)) { UI.toast('رمز باید ۴ رقم باشد'); return; }
+
+          var cfg2 = global.Sync.config();
+          var old = { url: cfg2.url, farmId: cfg2.farmId };
+          cfg2.url = url.replace(/\/+$/, '');
+          cfg2.farmId = farmId;
+          cfg2.stamp = 0;
+          cfg2.lastAt = 0;
+          Store.save();
+
+          UI.toast('در حال اتصال…');
+          global.Sync.request('/api/sync', { farmId: farmId, pin: pin, since: 0, cycles: [] })
+            .then(function (data) {
+              // رمز درست بود؛ همان را روی این گوشی هم ذخیره می‌کنیم تا ورود و
+              // همگام‌سازی بعدی با آن انجام شود
+              var st = Store.get().settings;
+              if (data.role === 'manager') st.managerPin = pin; else st.workerPin = pin;
+              Store.save();
+              return global.Sync.run({ full: true }).then(function () {
+                UI.closeModal();
+                refreshSyncButton();
+                render();
+                UI.toast('وصل شد ✅ (' + (data.role === 'manager' ? 'مدیر' : 'کارگر') + ')');
+              });
+            })
+            .catch(function (e) {
+              cfg2.url = old.url;
+              cfg2.farmId = old.farmId;
+              Store.save();
+              UI.toast(e.message || 'اتصال ناموفق بود');
+            });
+        }
+      }
+    });
+  }
+
+  function showFarmCode(farmId, url) {
+    UI.modal({
+      title: '✅ مرغداری ساخته شد',
+      body:
+        '<p>این کد را به کارگر بدهید تا در گوشی خودش وارد کند:</p>' +
+        '<div class="stat hero ok"><span class="k">کد مرغداری</span>' +
+          '<span class="v" style="letter-spacing:2px;font-size:26px">' + esc(farmId) + '</span></div>' +
+        '<div class="field" style="margin-top:12px"><label>آدرس سرور</label>' +
+          '<input type="text" dir="ltr" readonly value="' + esc(url) + '"></div>' +
+        '<p class="tiny muted">کارگر باید در گوشی خودش: منو ← اتصال به سرور ← این آدرس و کد را بزند و رمز کارگر را وارد کند.</p>',
+      footer: '<button class="btn ghost" data-act="close-modal">بستن</button>' +
+              '<button class="btn" data-act="share-code">📨 فرستادن</button>',
+      onAct: function (act) {
+        if (act !== 'share-code') return;
+        var txt = 'برنامه‌ی مرغینو — برای اتصال:\nآدرس سرور: ' + url + '\nکد مرغداری: ' + farmId;
+        if (navigator.share) navigator.share({ text: txt }).catch(function () {});
+        else if (navigator.clipboard) navigator.clipboard.writeText(txt).then(function () { UI.toast('کپی شد ✅'); });
+      }
+    });
+  }
+
   function aboutDialog() {
     UI.modal({
       title: 'ℹ️ راهنمای مرغینو',
@@ -441,11 +626,10 @@
   /* ================= جمع‌بندی ================= */
 
   function saveSummary(rating) {
-    var cycle = Store.activeCycle();
-    var s = cycle.summary || (cycle.summary = {});
-    $$('[data-sum]').forEach(function (t) { s[t.getAttribute('data-sum')] = t.value; });
-    if (rating != null) s.rating = rating;
-    Store.save();
+    var fields = {};
+    $$('[data-sum]').forEach(function (t) { fields[t.getAttribute('data-sum')] = t.value; });
+    if (rating != null) fields.rating = rating;
+    Store.setObject('summary', fields);
   }
 
   /* ================= اعلان‌ها ================= */
@@ -501,6 +685,7 @@
     'cycles': function () { cyclesDialog(); },
     'settings': function () { settingsDialog(); },
     'notif': function () { notifDialog(); },
+    'sync': function () { syncDialog(); },
     'backup': function () { backupDialog(); },
     'install': function () { installDialog(); },
     'about': function () { aboutDialog(); },
@@ -517,8 +702,7 @@
     },
     'close-cycle': function () {
       UI.confirmBox('بستن دوره', 'دوره بسته شود؟ بعد از آن فقط برای مطالعه باقی می‌ماند.', function () {
-        Store.activeCycle().status = 'closed';
-        Store.save();
+        Store.setCycle({ status: 'closed' });
         Dialogs.refresh('دوره بسته شد');
       }, 'بله، ببند');
     }
@@ -542,7 +726,7 @@
       var act = btn.getAttribute('data-act');
       // فقط کارهای منو در پنجره‌ها اجرا می‌شوند؛ بقیه را خود پنجره مدیریت می‌کند
       if (['cycle-new', 'cycle-edit', 'cycles', 'settings', 'notif', 'backup', 'install',
-           'about', 'switch-user', 'logout', 'vaccine-add'].indexOf(act) >= 0) {
+           'about', 'switch-user', 'logout', 'vaccine-add', 'sync'].indexOf(act) >= 0) {
         ev.preventDefault();
         UI.closeModal();
         actions[act](btn);
@@ -551,6 +735,7 @@
 
     $('#btn-menu').addEventListener('click', menuDialog);
     $('#btn-role').addEventListener('click', userDialog);
+    $('#btn-sync').addEventListener('click', syncDialog);
 
     $('#tabbar').addEventListener('click', function (ev) {
       var t = ev.target.closest('.tab');
